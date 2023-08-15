@@ -15,6 +15,7 @@ var (
 	AwsUser        string
 	AccessKey      string
 	Arch           string
+	Product        string
 )
 
 type Node struct {

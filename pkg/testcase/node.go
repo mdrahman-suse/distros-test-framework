@@ -20,7 +20,7 @@ func TestNodeStatus(
 	expectedNodeCount := cluster.NumServers + cluster.NumAgents 
 
 	if cluster.ProductType == "rke2" {
-		expectedNodeCount += cluster.NumWinAgents
+		expectedNodeCount += cluster.RKE2Cluster.NumWinAgents
 	}
 
 	Eventually(func(g Gomega) {

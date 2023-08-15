@@ -5,6 +5,7 @@ import (
 
 	"github.com/rancher/distros-test-framework/pkg/assert"
 	"github.com/rancher/distros-test-framework/pkg/testcase"
+	"github.com/rancher/distros-test-framework/shared"
 
 	. "github.com/onsi/ginkgo/v2"
 )
@@ -49,10 +50,11 @@ var _ = Describe("Test:", func() {
 		testcase.TestDnsAccess(true)
 	})
 
-	if cfg.Product == "k3s" {
+	if shared.Product == "k3s" {
 		It("Verifies Local Path Provisioner storage", func() {
 			testcase.TestLocalPathProvisionerStorage(true)
 		})
+
 		It("Verifies LoadBalancer Service", func() {
 			testcase.TestServiceLoadBalancer(true)
 		})

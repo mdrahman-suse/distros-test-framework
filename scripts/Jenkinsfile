@@ -59,23 +59,24 @@ node {
             try {
               stage('Configure and Build') {
                 if (env.AWS_SSH_PEM_KEY && env.AWS_SSH_KEY_NAME) {
-                  dir("./config/.ssh") {
+                  dir("./modules/.ssh") {
                     def decoded = new String(AWS_SSH_PEM_KEY.decodeBase64())
                     writeFile file: "aws_key.pem", text: decoded
                   }
                 }
-                dir("./config") {
+                dir("./modules") {
                   //update product info
-                  def data = "ENV_PRODUCT: ${env.PRODUCT_NAME}\nENV_TFVARS: ${env.PRODUCT_NAME}.tfvars\n"
-                  writeFile(file: 'config.yaml', text: data)
+                  //def data = "ENV_PRODUCT: ${env.PRODUCT_NAME}\nENV_TFVARS: ${env.PRODUCT_NAME}.tfvars\n"
+                  //writeFile(file: 'config.yaml', text: data)
 
                   //update tfvars file
-                  def filename = "${env.PRODUCT_NAME}.tfvars"
+                  def filename = "local.tfvars"
                   def configContents = env.TFVARS
                   writeFile file: filename, text: configContents +
+                    "\nproduct_name = \"" + env.PRODUCT_NAME + "\"" +
                     "\npassword = \"" + RKE2_RHEL_PASSWORD + "\"" +
                     "\nkey_name = \"" + AWS_SSH_KEY_NAME + "\"" +
-                    "\naccess_key = \"/go/src/github.com/rancher/distros-test-framework/config/.ssh/aws_key.pem\"" +
+                    "\naccess_key = \"/go/src/github.com/rancher/distros-test-framework/modules/.ssh/aws_key.pem\"" +
                     "\nresource_name = \"" + HOSTNAME_PREFIX + "\""
                   def testdata = readFile(file: filename)
                   println("\n\nTFVARS TEST DATA")
@@ -86,7 +87,7 @@ node {
               }
               stage('Run TestCombination') {
                 sh "docker run --name ${testContainer} -t --env-file ${envFile} " +
-                  "${imageName} sh -c \"chmod 400 /go/src/github.com/rancher/distros-test-framework/config/.ssh/aws_key.pem && " +
+                  "${imageName} sh -c \"chmod 400 /go/src/github.com/rancher/distros-test-framework/modules/.ssh/aws_key.pem && " +
                   "cd ./entrypoint && go test -timeout=${timeout} -v ./${TESTCASE}/... ${TEST_ARGS}\""
               }
             } finally {

@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
-	"github.com/rancher/distros-test-framework/config"
+	//"github.com/rancher/distros-test-framework/config"
 	"github.com/rancher/distros-test-framework/shared"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -23,93 +23,121 @@ type Cluster struct {
 	Status           string
 	ServerIPs        []string
 	AgentIPs         []string
-	WinAgentIPs      []string
 	NumServers       int
 	NumAgents        int
-	NumWinAgents	 int
-	RenderedTemplate string
-	ExternalDb       string
-	ClusterType      string
 	ProductType      string
 	ArchType         string
+	KubeConfigFile   string
+	K3SCluster       K3SCluster
+	RKE2Cluster      RKE2Cluster
 }
 
-func loadConfig() (*config.ProductConfig, error) {
-	cfg, err := config.LoadConfigEnv("./config")
-	if err != nil {
-		return nil, fmt.Errorf("error loading env config: %w", err)
-	}
-
-	return &cfg, nil
+type K3SCluster struct {
+	DataStoreType     string
+	ExternalDb        string
+	RenderedTemplate  string
 }
 
-func addTerraformOptions(cfg *config.ProductConfig) (*terraform.Options, string, error) {
+type RKE2Cluster struct {
+	WinAgentIPs   []string
+	NumWinAgents  int
+}
+
+// func loadConfig() (*config.ProductConfig, error) {
+// 	cfg, err := config.LoadConfigEnv("./config")
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error loading env config: %w", err)
+// 	}
+
+// 	return &cfg, nil
+// }
+
+func addTerraformOptions(g GinkgoTInterface) (*terraform.Options, string, error) {
 	var varDir string
 	var tfDir string
 	var err error
 
-	if cfg.Product == "k3s" || cfg.Product == "rke2" {
-		varDir, err = filepath.Abs(shared.BasePath() + fmt.Sprintf("/distros-test-framework/config/%s.tfvars", cfg.Product))
-		if err != nil {
-			return nil, "", err
-		}
-		tfDir, err = filepath.Abs(shared.BasePath() + fmt.Sprintf("/distros-test-framework/modules/%s",cfg.Product))
-		if err != nil {
-			return nil, "", err
-		}
-	} else {
-		return nil, "", fmt.Errorf("invalid product %s", cfg.Product)
+	moduleDir := shared.BasePath() + "/distros-test-framework/modules/"
+	varDir, err = filepath.Abs(moduleDir + "local.tfvars")
+	if err != nil {
+		return nil, "", err
 	}
 
+	ProductName := terraform.GetVariableAsStringFromVarFile(g, varDir, "product_name")
+	if ProductName != "k3s" && ProductName != "rke2" {
+		return nil, "", fmt.Errorf("invalid product: ", ProductName)
+	}
+
+	tfDir, err = filepath.Abs(moduleDir + ProductName)
+	if err != nil {
+		return nil, "", err
+	}
+	
 	terraformOptions := &terraform.Options{
 		TerraformDir: tfDir,
 		VarFiles:     []string{varDir},
+		EnvVars:      map[string]string{"product_name": ProductName},
 	}
 
 	return terraformOptions, varDir, nil
 }
 
-func addClusterConfig(
-	cfg *config.ProductConfig,
-	g GinkgoTInterface,
-	varDir string,
+func addClusterConfig(g GinkgoTInterface, varDir string,
 	terraformOptions *terraform.Options,
 ) (*Cluster, error) {
-	c := &Cluster{}
-	var agentIPs []string
 
-	if cfg.Product == "k3s" {
-		c.ClusterType = terraform.GetVariableAsStringFromVarFile(g, varDir, "cluster_type")
-		c.ExternalDb = terraform.GetVariableAsStringFromVarFile(g, varDir, "external_db")
-		c.RenderedTemplate = terraform.Output(g, terraformOptions, "rendered_template")
-	} 
-	
-	shared.KubeConfigFile = terraform.Output(g, terraformOptions, "kubeconfig")
-	shared.AwsUser = terraform.GetVariableAsStringFromVarFile(g, varDir, "aws_user")
-	shared.AccessKey = terraform.GetVariableAsStringFromVarFile(g, varDir, "access_key")
-	shared.Arch = terraform.GetVariableAsStringFromVarFile(g, varDir, "arch")
-	c.ArchType = shared.Arch
-	c.ProductType = cfg.Product
-	
-	serverIPs := strings.Split(terraform.Output(g, terraformOptions, "master_ips"), ",")
-	c.ServerIPs = serverIPs
+	cluster := &Cluster{}
 
-	rawAgentIPs := terraform.Output(g, terraformOptions, "worker_ips")
-	if rawAgentIPs != "" {
-		agentIPs = strings.Split(rawAgentIPs, ",")
-		c.AgentIPs = agentIPs
+	NumServers, err := strconv.Atoi(terraform.GetVariableAsStringFromVarFile(g, varDir, "no_of_server_nodes"))
+	if err != nil {
+		return nil, err
 	}
-	
-	if cfg.Product == "rke2" {
-		var winAgentIPs []string
+
+	NumAgents, err := strconv.Atoi(terraform.GetVariableAsStringFromVarFile(g, varDir, "no_of_worker_nodes"))
+	if err != nil {
+		return nil, err
+	}
+
+	NumServers, err = addSplitRole(g, varDir, NumServers)
+	if err != nil {
+		return nil, err
+	}
+
+	cluster.NumServers = NumServers
+	cluster.NumAgents = NumAgents
+	cluster.ProductType = terraformOptions.EnvVars["product_name"]
+	shared.Product = cluster.ProductType
+
+	if cluster.ProductType == "k3s" {
+		cluster.K3SCluster.DataStoreType = terraform.GetVariableAsStringFromVarFile(g, varDir, "datastore_type")
+		if cluster.K3SCluster.DataStoreType == "" {
+			cluster.K3SCluster.ExternalDb = terraform.GetVariableAsStringFromVarFile(g, varDir, "external_db")
+			cluster.K3SCluster.RenderedTemplate = terraform.Output(g, terraformOptions, "rendered_template")
+		}
+	}
+
+	if cluster.ProductType == "rke2" {
 		rawWinAgentIPs := terraform.Output(g, terraformOptions, "windows_worker_ips")
 		if rawWinAgentIPs != "" {
-			winAgentIPs = strings.Split(rawWinAgentIPs, ",")
-			c.WinAgentIPs = winAgentIPs
+			cluster.RKE2Cluster.WinAgentIPs = strings.Split(rawWinAgentIPs, ",")
 		}
 	}
 	
-	return c, nil
+	shared.AwsUser = terraform.GetVariableAsStringFromVarFile(g, varDir, "aws_user")
+	shared.AccessKey = terraform.GetVariableAsStringFromVarFile(g, varDir, "access_key")
+	shared.Arch = terraform.GetVariableAsStringFromVarFile(g, varDir, "arch")
+	shared.KubeConfigFile = terraform.Output(g, terraformOptions, "kubeconfig")
+	cluster.ArchType = shared.Arch
+	cluster.KubeConfigFile = shared.KubeConfigFile
+	
+	cluster.ServerIPs = strings.Split(terraform.Output(g, terraformOptions, "master_ips"), ",")
+
+	rawAgentIPs := terraform.Output(g, terraformOptions, "worker_ips")
+	if rawAgentIPs != "" {
+		cluster.AgentIPs = strings.Split(rawAgentIPs, ",")
+	}
+	
+	return cluster, nil
 }
 
 func addSplitRole(g GinkgoTInterface, varDir string, NumServers int) (int, error) {

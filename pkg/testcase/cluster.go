@@ -20,30 +20,30 @@ func TestBuildCluster(g GinkgoTInterface) {
 	Expect(cluster.ServerIPs).ShouldNot(BeEmpty())
 
 	if cluster.ProductType == "k3s" {
-		if strings.Contains(cluster.ClusterType, "etcd") {
-			fmt.Println("Backend:", cluster.ClusterType)
+		if strings.Contains(cluster.K3SCluster.DataStoreType, "etcd") {
+			fmt.Println("Backend:", cluster.K3SCluster.DataStoreType)
 		} else {
-			fmt.Println("Backend:", cluster.ExternalDb)
+			fmt.Println("Backend:", cluster.K3SCluster.ExternalDb)
 		}
 	
-		if cluster.ExternalDb != "" && cluster.ClusterType == "" {
+		if cluster.K3SCluster.ExternalDb != "" && cluster.K3SCluster.DataStoreType == "" {
 			for i := 0; i > len(cluster.ServerIPs); i++ {
 				cmd := "grep \"datastore-endpoint\" /etc/systemd/system/k3s.service"
 				res, err := shared.RunCommandOnNode(cmd, cluster.ServerIPs[0])
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).Should(ContainSubstring(cluster.RenderedTemplate))
+				Expect(res).Should(ContainSubstring(cluster.K3SCluster.RenderedTemplate))
 			}
 		}
 	}
 
 	fmt.Println("\nKUBECONFIG:\n")
-	err = shared.PrintFileContents(shared.KubeConfigFile)
+	err = shared.PrintFileContents(cluster.KubeConfigFile)
 	if err != nil {
 		return
 	}
 
 	fmt.Println("BASE64 ENCODED KUBECONFIG:\n")
-	err = shared.PrintBase64Encoded(shared.KubeConfigFile)
+	err = shared.PrintBase64Encoded(cluster.KubeConfigFile)
 	if err != nil {
 		return
 	}
@@ -53,7 +53,7 @@ func TestBuildCluster(g GinkgoTInterface) {
 	checkAndPrintAgentNodeIPs(cluster.NumAgents, cluster.AgentIPs, false)
 
 	if cluster.ProductType == "rke2" {
-		checkAndPrintAgentNodeIPs(cluster.NumWinAgents, cluster.WinAgentIPs, true)
+		checkAndPrintAgentNodeIPs(cluster.RKE2Cluster.NumWinAgents, cluster.RKE2Cluster.WinAgentIPs, true)
 	}	
 }
 

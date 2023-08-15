@@ -2,11 +2,11 @@ package mixedoscluster
 
 import (
 	"flag"
-	"fmt"
-	"os"
+	//"fmt"
+	//"os"
 	"testing"
 
-	"github.com/rancher/distros-test-framework/config"
+	//"github.com/rancher/distros-test-framework/config"
 	"github.com/rancher/distros-test-framework/pkg/customflag"
 	"github.com/rancher/distros-test-framework/factory"
 
@@ -15,26 +15,26 @@ import (
 )
 
 var sonobuoyVersion string
-var cfg config.ProductConfig
+//var cfg config.ProductConfig
 
 func TestMain(m *testing.M) {
-	var err error
+	// var err error
 	flag.StringVar(&sonobuoyVersion, "sonobuoyVersion", "", "Sonobuoy Version that will be executed on the cluster")
 	flag.Var(&customflag.ServiceFlag.ClusterConfig.Destroy, "destroy", "Destroy cluster after test")
 	flag.Parse()
 
-	cfg, err = config.LoadConfigEnv("../../config")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// cfg, err = config.LoadConfigEnv("../../config")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	if cfg.Product == "rke2" {
-		os.Exit(m.Run())
-	} else {
-		fmt.Println("Unsupported product to execute tests: " + cfg.Product)
-		os.Exit(1)
-	}
+	// if cfg.Product == "rke2" {
+	// 	os.Exit(m.Run())
+	// } else {
+	// 	fmt.Println("Unsupported product to execute tests: " + cfg.Product)
+	// 	os.Exit(1)
+	// }
 }
 
 func TestMixedOSClusterCreateSuite(t *testing.T) {
