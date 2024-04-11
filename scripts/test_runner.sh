@@ -15,7 +15,11 @@ function validate_test_image() {
 function validate_dir(){
   case "$TEST_DIR" in
        upgradecluster|versionbump|mixedoscluster|dualstack|validatecluster|createcluster|selinux|\
+<<<<<<< HEAD
        certrotate|secretsencrypt|restartservice|deployrancher|clusterreset|rebootinstances|airgap)
+=======
+       certrotate|secretsencrypt|restartservice|deployrancher|clusterreset|airgap)
+>>>>>>> dd2e3cd (Airgap POC)
       if [[ "$TEST_DIR" == "upgradecluster" ]];
         then
             case "$TEST_TAG"  in
