@@ -39,7 +39,6 @@ check_tar(){
   fi
 }
 
-
 get_assets() {
   echo "Downloading $product dependencies..."
   if [[ "$product" == "k3s" ]]; then
