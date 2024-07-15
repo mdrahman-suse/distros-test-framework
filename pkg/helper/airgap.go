@@ -67,6 +67,8 @@ func DockerActions(cluster *shared.Cluster, flags *customflag.FlagConfig, hostna
 	_, err := shared.RunCommandOnNode(cmd, cluster.GeneralConfig.BastionIP)
 	Expect(err).To(BeNil())
 	log.Info("Docker pull/tag/push completed for image: " + image)
+
+	//sudo docker image ls %v/%v
 }
 
 func getArtifacts(cluster *shared.Cluster, flags *customflag.FlagConfig) (res string, err error) {

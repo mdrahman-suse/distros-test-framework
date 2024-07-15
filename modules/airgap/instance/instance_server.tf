@@ -77,7 +77,7 @@ resource "aws_instance" "bastion" {
   ami                         = var.aws_ami
   instance_type               = var.ec2_instance_class  
   associate_public_ip_address = true
-  ipv6_address_count          = var.enable_ipv6 == true ? 1 : 0
+  ipv6_address_count          = var.enable_ipv6 ? 1 : 0
   count                       = var.no_of_bastion_nodes
   
   connection {
