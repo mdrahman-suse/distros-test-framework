@@ -544,3 +544,18 @@ func CleanSliceStrings(stringsSlice []string) []string {
 
 	return stringsSlice
 }
+
+func checkErr(err error) {
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func CopyFile(src, dest string) {
+	// Read all content of src to data, may cause OOM for a large file.
+    data, err := os.ReadFile(src)
+    checkErr(err)
+    // Write data to dst
+    err = os.WriteFile(dest, data, 0644)
+    checkErr(err)
+}

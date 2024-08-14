@@ -18,7 +18,9 @@ flags=${7}
 
 create_config() {
   hostname=$(hostname -f)
-  mkdir -p /etc/rancher/$product
+  if [[ ! -f "/etc/rancher/$product" ]]; then
+    mkdir -p /etc/rancher/$product
+  fi
   cat <<EOF >>/etc/rancher/$product/config.yaml
 node-name: $hostname
 EOF

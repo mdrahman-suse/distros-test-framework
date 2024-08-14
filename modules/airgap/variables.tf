@@ -45,6 +45,13 @@ variable "no_of_server_nodes" {
 variable "no_of_worker_nodes" {
   default = 0
 }
+variable "server_flags" {}
+variable "worker_flags" {}
 variable "arch" {
   default = "amd64"
 }
+
+# Windows variables
+variable "no_of_windows_worker_nodes" {}
+variable "windows_aws_ami" {}
+variable "windows_ec2_instance_class" {}

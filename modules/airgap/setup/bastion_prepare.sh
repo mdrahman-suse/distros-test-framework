@@ -22,7 +22,7 @@ install_docker() {
             break
           else
             echo "Retrying..."
-            sleep 2
+            sleep 5
           fi
       done
     fi

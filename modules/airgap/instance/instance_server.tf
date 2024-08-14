@@ -13,7 +13,7 @@ resource "aws_instance" "master" {
   ami                         = var.aws_ami
   instance_type               = var.ec2_instance_class  
   associate_public_ip_address = false
-  ipv6_address_count          = var.enable_ipv6 == true ? 1 : 0
+  ipv6_address_count          = var.enable_ipv6 ? 1 : 0
   count                       = var.no_of_server_nodes
   
   root_block_device {
@@ -28,16 +28,22 @@ resource "aws_instance" "master" {
     Name                 = "${var.resource_name}-server${count.index + 1}"
   }
 
+  user_data              = <<-EOF
+                             #!/bin/bash
+                             sudo mkdir -p /etc/rancher/${var.product}
+                           EOF
+
+
 }
 
 resource "aws_instance" "worker" {
 
-  depends_on = [ null_resource.prepare_bastion ]
+  depends_on = [ null_resource.prepare_bastion, aws_instance.master[0] ]
 
   ami                         = var.aws_ami
   instance_type               = var.ec2_instance_class  
   associate_public_ip_address = false
-  ipv6_address_count          = var.enable_ipv6 == true ? 1 : 0
+  ipv6_address_count          = var.enable_ipv6 ? 1 : 0
   count                       = var.no_of_worker_nodes
   
   root_block_device {
@@ -51,27 +57,37 @@ resource "aws_instance" "worker" {
   tags = {
     Name                 = "${var.resource_name}-worker${count.index + 1}"
   }
+
+  user_data              = <<-EOF
+                            #!/bin/bash
+                            sudo mkdir -p /etc/rancher/${var.product}
+                          EOF
 }
 
-# resource "aws_instance" "windows_worker" {
-#   ami                         = var.windows_aws_ami
-#   instance_type               = var.windows_ec2_instance_class  
-#   associate_public_ip_address = false
-#   ipv6_address_count          = var.enable_ipv6 ? 1 : 0
-#   count                       = ((data.template_file.is_airgap == true || data.template_file.is_ipv6only == true)) ? 1 : 0
+resource "aws_instance" "windows_worker" {
+
+  depends_on = [ null_resource.prepare_bastion, aws_instance.master[0] ]
+
+  ami                         = var.windows_aws_ami
+  instance_type               = var.windows_ec2_instance_class  
+  associate_public_ip_address = false
+  ipv6_address_count          = var.enable_ipv6 ? 1 : 0
+  count                       = var.product == "rke2" ? var.no_of_windows_worker_nodes : 0
   
-#   root_block_device {
-#     volume_size          = "50"
-#     volume_type          = "standard"
-#   }
-#   subnet_id              = var.subnets
-#   availability_zone      = var.availability_zone
-#   vpc_security_group_ids = [var.sg_id]
-#   key_name               = var.key_name
-#   tags = {
-#     Name                 = "${var.resource_name}-agent"
-#   }
-# }
+  root_block_device {
+    volume_size          = "50"
+    volume_type          = "standard"
+  }
+  subnet_id              = var.subnets
+  availability_zone      = var.availability_zone
+  vpc_security_group_ids = [var.sg_id]
+  key_name               = var.key_name
+  get_password_data      = true
+  user_data              = templatefile("setup/windows_prepare.tftpl", {serverIP: "${aws_instance.master[0].private_ip}"}) 
+  tags = {
+    Name                 = "${var.resource_name}-windows-worker${count.index + 1}"
+  }
+}
 
 resource "aws_instance" "bastion" {
   ami                         = var.aws_ami
@@ -154,6 +170,9 @@ resource "null_resource" "prepare_bastion" {
     ]
   }
 }
+
+# sudo chmod +x get_artifacts.sh
+# sudo ./get_artifacts.sh ${var.product} ${var.product_version} ${var.arch} "" "windows" "cni: calico"
 
 
 # resource "null_resource" "uploader" {
