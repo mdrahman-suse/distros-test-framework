@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"regexp"
 
 	"github.com/rancher/distros-test-framework/pkg/customflag"
 	"github.com/rancher/distros-test-framework/pkg/logger"
@@ -20,12 +21,11 @@ func SetupBastion(cluster *shared.Cluster, flags *customflag.FlagConfig) {
 	Expect(err).To(BeNil())
 
 	log.Info("Setting up private registry...")
-	cmd := fmt.Sprintf("sudo chmod +x private_registry.sh && sudo ./private_registry.sh %v %v",
-		flags.AirgapFlag.RegistryUsername, flags.AirgapFlag.RegistryPassword)
+	cmd := fmt.Sprintf("sudo chmod +x private_registry.sh && sudo ./private_registry.sh %v %v %v",
+		flags.AirgapFlag.RegistryUsername, 
+		flags.AirgapFlag.RegistryPassword,
+		cluster.GeneralConfig.BastionDNS)
 	_, err = shared.RunCommandOnNode(cmd, cluster.GeneralConfig.BastionIP)
-	Expect(err).To(BeNil())
-
-	hostname, err := shared.RunCommandOnNode("hostname -f", cluster.GeneralConfig.BastionIP)
 	Expect(err).To(BeNil())
 
 	cmd = fmt.Sprintf("sudo cat %v-images.txt", cluster.Config.Product)
@@ -36,8 +36,10 @@ func SetupBastion(cluster *shared.Cluster, flags *customflag.FlagConfig) {
 	Expect(len(images)).NotTo(BeZero())
 
 	log.Info("Running Docker pull/tag/push/validate on bastion node...")
+	var cleanImage string
 	for _, image := range images {
-		DockerActions(cluster, flags, hostname, image)
+		cleanImage = cleanedImage(image)
+		DockerActions(cluster, flags, cluster.GeneralConfig.BastionDNS, cleanImage)
 	}
 	log.Info("Docker operations completed")
 
@@ -45,13 +47,20 @@ func SetupBastion(cluster *shared.Cluster, flags *customflag.FlagConfig) {
 	Expect(err).To(BeNil())
 
 	regMap := map[string]string{
-		"$PRIVATE_REG": hostname,
+		"$PRIVATE_REG": cluster.GeneralConfig.BastionDNS,
 		"$USERNAME":    flags.AirgapFlag.RegistryUsername,
 		"$PASSWORD":    flags.AirgapFlag.RegistryPassword,
 		"$HOMEDIR":     pwd,
 	}
 
 	updateRegistry(cluster, regMap)
+}
+
+func cleanedImage(image string) (cleanImage string) {
+    m := regexp.MustCompile("^(.*?)docker.io/(.*)$") 
+    str := "${1}$2"
+    cleanImage = m.ReplaceAllString(image, str) 
+    return cleanImage
 }
 
 func DockerActions(cluster *shared.Cluster, flags *customflag.FlagConfig, hostname, image string) {
@@ -170,6 +179,20 @@ func CmdForPrivateNode(cluster *shared.Cluster, cmd, ip string) (res string, err
 	log.Info(cmd)
 	serverCmd := fmt.Sprintf(
 		"%v %v@%v '%v'",
+		ssPrefix("ssh", cluster.AwsEc2.KeyName),
+		cluster.AwsEc2.AwsUser, ip, cmd)
+	log.Info(serverCmd)
+	res, err = shared.RunCommandOnNode(serverCmd, cluster.GeneralConfig.BastionIP)
+
+	return res, err
+}
+
+func CmdForWindowsNode(cluster *shared.Cluster, cmd, ip string) (res string, err error) {
+	log.Info(cmd)
+	serverCmd := fmt.Sprintf(
+		"ssh -L 30002:%v:3389 -i jenkins-rke-validation.pem  %v@%v " +
+		"'ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i jenkins-rke-validation.pem Administrator@172.31.1.201 " +
+		"'%v''",
 		ssPrefix("ssh", cluster.AwsEc2.KeyName),
 		cluster.AwsEc2.AwsUser, ip, cmd)
 	log.Info(serverCmd)

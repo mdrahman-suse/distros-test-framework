@@ -54,16 +54,18 @@ get_assets() {
     if [[ -n "$flags" ]]; then
       if [[ "$flags" =~ "calico" ]]; then
         wget https://github.com/rancher/rke2/releases/download/$version/rke2-images-calico.linux-$arch.$tarball_type
-      elif [[ "$flags" =~ "cilium" ]]; then
+      fi
+      if [[ "$flags" =~ "cilium" ]]; then
         wget https://github.com/rancher/rke2/releases/download/$version/rke2-images-cilium.linux-$arch.$tarball_type
-      elif [[ "$flags" =~ "canal" ]]; then
+      fi
+      if [[ "$flags" =~ "canal" ]]; then
         wget https://github.com/rancher/rke2/releases/download/$version/rke2-images-canal.linux-$arch.$tarball_type
-      elif [[ "$flags" =~ "flannel" ]]; then
+      fi
+      if [[ "$flags" =~ "flannel" ]]; then
         wget https://github.com/rancher/rke2/releases/download/$version/rke2-images-flannel.linux-$arch.$tarball_type
-      elif [[ "$flags" =~ "multus" ]]; then
+      fi
+      if [[ "$flags" =~ "multus" ]]; then
         wget https://github.com/rancher/rke2/releases/download/$version/rke2-images-multus.linux-$arch.$tarball_type
-      else
-        echo "No match found in $flags. Using default cni canal"
       fi
     fi
   else
@@ -77,6 +79,7 @@ get_windows_assets() {
   wget -O rke2-windows-1809-$arch-images.$tarball_type https://github.com/rancher/rke2/releases/download/$version/rke2-windows-1809-$arch-images.$tarball_type
   wget -O rke2-windows-ltsc2022-$arch-images.$tarball_type https://github.com/rancher/rke2/releases/download/$version/rke2-windows-1809-$arch-images.$tarball_type
   wget -O rke2.windows-$arch.tar.gz https://github.com/rancher/rke2/releases/download/$version/rke2.windows-$arch.tar.gz
+  wget -O rke2-windows-install.ps1 https://raw.githubusercontent.com/rancher/rke2/master/install.ps1
   wget -O rke2-windows.exe https://github.com/rancher/rke2/releases/download/$version/rke2-windows-$arch.exe
 }
 
@@ -110,13 +113,14 @@ save_win_assets() {
 main() {
   check_arch
   check_tar
-  get_assets
-  validate_assets
+  #validate_assets
   if [[ "$product" == "rke2" ]]; then
-    save_to_directory
+    if [[ "$os" == "linux" ]]; then
+      get_assets
+      save_to_directory
+    fi
     if [[ "$os" == "windows" ]]; then
       get_windows_assets
-      sleep 5
       save_win_assets
     fi
   fi

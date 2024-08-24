@@ -19,6 +19,7 @@ func TestBuildPrivateCluster(cluster *shared.Cluster) {
 
 	if cluster.GeneralConfig.BastionIP != "" {
 		log.Infof("Bastion Node IP: %v", cluster.GeneralConfig.BastionIP)
+		log.Infof("Bastion Node DNS: %v", cluster.GeneralConfig.BastionDNS)
 	}
 	log.Infof("Server Node IPs: %v", cluster.ServerIPs)
 
@@ -61,6 +62,7 @@ func TestPrivateRegistry(cluster *shared.Cluster, flags *customflag.FlagConfig) 
 			Expect(err).To(BeNil())
 		}
 	}
+
 	for idx, agentIP := range cluster.AgentIPs {
 		log.Infof("Installing %v on agent node-%v", cluster.Config.Product, idx+1)
 		cmd := fmt.Sprintf(
@@ -68,6 +70,15 @@ func TestPrivateRegistry(cluster *shared.Cluster, flags *customflag.FlagConfig) 
 				"sudo ./install_product.sh %v \"%v\" \"%v\" \"agent\" \"%v\"",
 			cluster.Config.Product, cluster.ServerIPs[0], token, agentIP)
 		_, err := helper.CmdForPrivateNode(cluster, cmd, agentIP)
+		Expect(err).To(BeNil())
+	}
+
+	for idx, winAgentIP := range cluster.WinAgentIPs {
+		log.Infof("Installing %v on windows agent node-%v", cluster.Config.Product, idx+1)
+		cmd := fmt.Sprintf(
+			"./windows_install.ps1 %v",
+			token)
+		_, err := helper.CmdForWindowsNode(cluster, cmd, winAgentIP)
 		Expect(err).To(BeNil())
 	}
 

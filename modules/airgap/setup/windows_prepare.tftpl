@@ -9,9 +9,5 @@ Enable-WindowsOptionalFeature -Online -FeatureName Containers -All
 New-Item -Type Directory c:/usr/local/bin -Force
 New-Item -Type Directory c:/etc/rancher/rke2 -Force
 New-Item -Type Directory c:/var/lib/rancher/rke2/agent/images/ -Force
-Set-Content -Path c:/etc/rancher/rke2/config.yaml -Value "server: https://${serverIP}:9345"
-[System.Environment]::SetEnvironmentVariable(
-        "Path",[System.Environment]::GetEnvironmentVariable(
-            "Path", [System.EnvironmentVariableTarget]::Machine) + ";c:\var\lib\rancher\rke2\bin;c:\usr\local\bin",
-    [System.EnvironmentVariableTarget]::Machine)
+Set-Content -Path c:/etc/rancher/rke2/config.yaml -Value "server: https://${serverIP}:9345`ntoken: TOKEN`n"
 </powershell>
