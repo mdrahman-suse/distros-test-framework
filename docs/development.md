@@ -102,13 +102,13 @@ no_of_windows_worker_nodes  = <count of Windows node>
 
 Tests can be run individually per package:
 ```bash
-go test -timeout=45m -v ./entrypoint/${PACKAGE_NAME}/...
+go test -timeout=45m -v ./features/${PACKAGE_NAME}/...
 
-go test -timeout=45m -v ./entrypoint/$PACKAGE_NAME/...
+go test -timeout=45m -v ./features/$PACKAGE_NAME/...
 
-go test -timeout=45m -v -tags=upgrademanual ./entrypoint/upgradecluster/... -installVersionOrCommit v1.25.8+rke2r1
+go test -timeout=45m -v -tags=upgrademanual ./features/upgradecluster/... -installVersionOrCommit v1.25.8+rke2r1
 
-go test -timeout=45m -v -tags=upgradesuc ./entrypoint/upgradecluster/... -upgradeVersion v1.25.8+rke2r1
+go test -timeout=45m -v -tags=upgradesuc ./features/upgradecluster/... -upgradeVersion v1.25.8+rke2r1
 ```
 
 Test flags:
@@ -144,7 +144,7 @@ Args:
 - ${TESTDIR}               path to the test directory 
 - ${TESTFILE}              path to the test file
 - ${TAGTEST}               name of the tag function from suite ( -tags=upgradesuc or -tags=upgrademanual )
-- ${TESTCASE}              name of the testcase to run
+- ${TESTCASE}              name of the features to run
 - ${APPLYWORKLOAD}        true or false to deploy workload
 - ${DELETEWORKLOAD}        true or false to delete workload that is deployed. Only applicable if APPLYWORKLOAD=true
 - ${CMD}                   command to run
@@ -157,15 +157,15 @@ Commands:
 $ make test-env-up                     # create the image from Dockerfile.build
 $ make test-run                        # runs create and upgrade cluster by passing the argname and argvalue
 $ make test-env-down                   # removes the image and container by prefix
-$ make test-env-clean                  # removes instances and resources created by testcase
-$ make test-logs                       # prints logs from container the testcase
-$ make test-complete                   # clean resources + remove images + run testcase
+$ make test-env-clean                  # removes instances and resources created by features
+$ make test-logs                       # prints logs from container the features
+$ make test-complete                   # clean resources + remove images + run features
 $ make test-create                     # runs create cluster test locally
 $ make test-upgrade                    # runs upgrade cluster test locally
 $ make test-version-bump               # runs version bump test locally
 $ make test-run                        # runs create and upgrade cluster by passing the argname and argvalue
 $ make remove-tf-state                 # removes acceptance state dir and files
-$ make test-suite                      # runs all testcase locally in sequence not using the same state
+$ make test-suite                      # runs all features locally in sequence not using the same state
 $ make pre-commit                      # runs go fmt,imports,vet and lint
 ```
 
@@ -202,7 +202,7 @@ $ make test-create
 $ make test-upgrade-manual INSTALLTYPE=257fa2c54cda332e42b8aae248c152f4d1898218
 
 - Run bump version with go test:
-$go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
+$go test -timeout=45m -v -tags=versionbump  ./features/versionbump/... \
 -cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml ; | grep -A2 annotations, k3s -v" \
 -expectedValue "CNI plugins plugin v1.2.0-k3s1,1M, v1.26" \
 -expectedValueUpgrade "CNI plugins plugin v1.2.0-k3s1,1M, v1.27" \
@@ -253,12 +253,12 @@ $ -v /path/to/distros-test-framework/tmp/:/tmp
 # Example full commands:
 $ rm -rf modules/ tmp/ && docker cp at1:/go/src/github.com/rancher/distros-test-framework/modules/ modules/ && docker cp at1:/tmp/ tmp/
 $ docker build . -q -f ./scripts/Dockerfile.jenkins -t ${TAG_NAME}
-$ docker run -dt --name at2 -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} -v ${ACCESS_KEY_LOCAL}:/go/src/github.com/rancher/distros-test-framework/config/.ssh/aws_key.pem -v /Users/fakeuser/gh-repos/distros-test-framework/tmp/:/tmp --env-file ./config/.env ${TAG_NAME} sh -c "chmod 400 /go/src/github.com/rancher/distros-test-framework/config/.ssh/aws_key.pem && cd ./entrypoint && go test -timeout=30m -v ./validatecluster/..."
+$ docker run -dt --name at2 -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} -v ${ACCESS_KEY_LOCAL}:/go/src/github.com/rancher/distros-test-framework/config/.ssh/aws_key.pem -v /Users/fakeuser/gh-repos/distros-test-framework/tmp/:/tmp --env-file ./config/.env ${TAG_NAME} sh -c "chmod 400 /go/src/github.com/rancher/distros-test-framework/config/.ssh/aws_key.pem && cd ./features && go test -timeout=30m -v ./validatecluster/..."
 ```
 
 ### Debugging
 ````
-To focus individual runs on specific test clauses, you can prefix with `F`. For example, in the [create cluster test](../tests/acceptance/entrypoint/createcluster_test.go), you can update the initial creation to be: `FIt("Starts up with no issues", func() {` in order to focus the run on only that clause.
+To focus individual runs on specific test clauses, you can prefix with `F`. For example, in the [create cluster test](../tests/acceptance/features/createcluster_test.go), you can update the initial creation to be: `FIt("Starts up with no issues", func() {` in order to focus the run on only that clause.
 Or use break points in your IDE.
 ````
 

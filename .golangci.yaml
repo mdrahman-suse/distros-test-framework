@@ -79,7 +79,7 @@ linters-settings:
 
 run:
   skip-files:
-    - "pkg/testcase/selinux.go"
+    - "pkg/specs/selinux.go"
     -  ".*_suite_test.go"
 
 issues:

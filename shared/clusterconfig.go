@@ -13,10 +13,11 @@ import (
 )
 
 var (
-	once    sync.Once
-	cluster *Cluster
-	product string
-	module  string
+	once     sync.Once
+	cluster  *Cluster
+	product  string
+	module   string
+	provider string
 )
 
 type Cluster struct {
@@ -88,18 +89,21 @@ type Pod struct {
 func setConfig() {
 	product = os.Getenv("ENV_PRODUCT")
 	module = os.Getenv("ENV_MODULE")
+	provider = os.Getenv("ENV_PROVIDER")
 }
 
 // ClusterConfig returns a singleton cluster with all terraform config and vars.
 func ClusterConfig() *Cluster {
+	LogLevel("info", "Setting config before initializing new cluster...")
 	setConfig()
 	once.Do(func() {
 		var err error
-		cluster, err = newCluster(product, module)
+		LogLevel("info", "Creating new cluster for product: %s, provider: %s, module: %s", product, provider, module)
+		cluster, err = newCluster(product, provider, module)
 		if err != nil {
 			LogLevel("error", "error getting cluster: %w\n", err)
 			if customflag.ServiceFlag.Destroy {
-				LogLevel("info", "\nmoving to start destroy operation\n")
+				LogLevel("info", "\nDestroy cluster: Starting...\n")
 				status, destroyErr := DestroyCluster()
 				if destroyErr != nil {
 					LogLevel("error", "error destroying cluster: %w\n", destroyErr)
@@ -109,6 +113,7 @@ func ClusterConfig() *Cluster {
 					LogLevel("error", "cluster not destroyed: %s\n", status)
 					os.Exit(1)
 				}
+				LogLevel("info", "\nDestroy cluster: Completed!\n")
 			}
 			os.Exit(1)
 		}
@@ -174,8 +179,9 @@ func addClusterFromKubeConfig(nodes []Node) (*Cluster, error) {
 }
 
 // newCluster creates a new cluster and returns his values from terraform config and vars.
-func newCluster(product, module string) (*Cluster, error) {
-	terraformOptions, varDir, err := setTerraformOptions(product, module)
+func newCluster(product, provider, module string) (*Cluster, error) {
+	LogLevel("info", "Setting terraform options...")
+	terraformOptions, varDir, err := setTerraformOptions(product, provider, module)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +221,7 @@ func newCluster(product, module string) (*Cluster, error) {
 	}
 
 	LogLevel("info", "Loading TF Configs...")
-	c, err := loadTFconfig(t, product, module, varDir, terraformOptions)
+	c, err := loadTFconfig(t, product, module, provider, varDir, terraformOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +236,7 @@ func newCluster(product, module string) (*Cluster, error) {
 
 // DestroyCluster destroys the cluster and returns it.
 func DestroyCluster() (string, error) {
-	terraformOptions, _, err := setTerraformOptions(product, module)
+	terraformOptions, _, err := setTerraformOptions(product, provider, module)
 	if err != nil {
 		return "", err
 	}

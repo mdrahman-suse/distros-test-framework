@@ -6,14 +6,14 @@ import (
 
 	"github.com/rancher/distros-test-framework/pkg/assert"
 	"github.com/rancher/distros-test-framework/pkg/k8s"
-	"github.com/rancher/distros-test-framework/pkg/testcase"
+	"github.com/rancher/distros-test-framework/pkg/specs"
 	"github.com/rancher/distros-test-framework/shared"
 )
 
 // upgradeVersion upgrades the product version.
 func upgradeVersion(template TestTemplate, k8sClient *k8s.Client, version string) error {
 	cluster := shared.ClusterConfig()
-	err := testcase.TestUpgradeClusterManual(cluster, k8sClient, version)
+	err := specs.TestUpgradeClusterManual(cluster, k8sClient, version)
 	if err != nil {
 		return err
 	}
@@ -63,47 +63,47 @@ func AddTestCases(cluster *shared.Cluster, k8sClient *k8s.Client, names []string
 //nolint:revive // we want to keep the argument for visibility.
 func addTestCaseMap(cluster *shared.Cluster, k8sClient *k8s.Client) map[string]testCase {
 	return map[string]testCase{
-		"TestDaemonset":        testcase.TestDaemonset,
-		"TestIngress":          testcase.TestIngress,
-		"TestDNSAccess":        testcase.TestDNSAccess,
-		"TestServiceClusterIP": testcase.TestServiceClusterIP,
-		"TestServiceNodePort":  testcase.TestServiceNodePort,
+		"TestDaemonset":        specs.TestDaemonset,
+		"TestIngress":          specs.TestIngress,
+		"TestDNSAccess":        specs.TestDNSAccess,
+		"TestServiceClusterIP": specs.TestServiceClusterIP,
+		"TestServiceNodePort":  specs.TestServiceNodePort,
 		"TestLocalPathProvisionerStorage": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestLocalPathProvisionerStorage(cluster, applyWorkload, deleteWorkload)
+			specs.TestLocalPathProvisionerStorage(cluster, applyWorkload, deleteWorkload)
 		},
-		"TestServiceLoadBalancer": testcase.TestServiceLoadBalancer,
+		"TestServiceLoadBalancer": specs.TestServiceLoadBalancer,
 		"TestInternodeConnectivityMixedOS": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestInternodeConnectivityMixedOS(cluster, applyWorkload, deleteWorkload)
+			specs.TestInternodeConnectivityMixedOS(cluster, applyWorkload, deleteWorkload)
 		},
 		"TestSonobuoyMixedOS": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestSonobuoyMixedOS(deleteWorkload)
+			specs.TestSonobuoyMixedOS(deleteWorkload)
 		},
 		"TestSelinux": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestSelinux(cluster)
+			specs.TestSelinux(cluster)
 		},
 		"TestSelinuxSpcT": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestSelinuxSpcT(cluster)
+			specs.TestSelinuxSpcT(cluster)
 		},
 		"TestUninstallPolicy": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestUninstallPolicy(cluster)
+			specs.TestUninstallPolicy(cluster)
 		},
 		"TestSelinuxContext": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestSelinuxContext(cluster)
+			specs.TestSelinuxContext(cluster)
 		},
 		"TestIngressRoute": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestIngressRoute(cluster, applyWorkload, deleteWorkload, "traefik.io/v1alpha1")
+			specs.TestIngressRoute(cluster, applyWorkload, deleteWorkload, "traefik.io/v1alpha1")
 		},
 		"TestCertRotate": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestCertRotate(cluster)
+			specs.TestCertRotate(cluster)
 		},
 		"TestSecretsEncryption": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestSecretsEncryption()
+			specs.TestSecretsEncryption()
 		},
 		"TestRestartService": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestRestartService(cluster)
+			specs.TestRestartService(cluster)
 		},
 		"TestClusterReset": func(applyWorkload, deleteWorkload bool) {
-			testcase.TestClusterReset(cluster, k8sClient)
+			specs.TestClusterReset(cluster, k8sClient)
 		},
 	}
 }

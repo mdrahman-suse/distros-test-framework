@@ -17,7 +17,7 @@ type RunCmd struct {
 	Run []customflag.TestMapConfig
 }
 
-// TestConfig represents the testcase function configuration.
+// TestConfig represents the features function configuration.
 type TestConfig struct {
 	TestFunc       []testCase
 	ApplyWorkload  bool

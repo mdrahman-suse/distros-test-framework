@@ -51,34 +51,34 @@ test-skip:
 	endif
 
 test-create:
-	@go test -timeout=45m -v -count=1 ./entrypoint/createcluster/...
+	@go test -timeout=45m -v -count=1 ./features/createcluster/...
 
 test-cert-rotate:
-	@go test -timeout=45m -v -count=1 ./entrypoint/certrotate/...
+	@go test -timeout=45m -v -count=1 ./features/certrotate/...
 
 test-secrets-encrypt:
-	@go test -timeout=45m -v -count=1 ./entrypoint/secretsencrypt/...
+	@go test -timeout=45m -v -count=1 ./features/secretsencrypt/...
 
 test-validate:
-	@go test -timeout=45m -v -count=1 ./entrypoint/validatecluster/...
+	@go test -timeout=45m -v -count=1 ./features/validatecluster/...
 
 test-upgrade-suc:
-	@go test -timeout=45m -v -tags=upgradesuc -count=1 ./entrypoint/upgradecluster/... -sucUpgradeVersion ${SUC_UPGRADE_VERSION} -channel "${CHANNEL}"
+	@go test -timeout=45m -v -tags=upgradesuc -count=1 ./features/upgradecluster/... -sucUpgradeVersion ${SUC_UPGRADE_VERSION} -channel "${CHANNEL}"
 
 test-upgrade-manual:
-	@go test -timeout=45m -v -tags=upgrademanual -count=1 ./entrypoint/upgradecluster/... -installVersionOrCommit ${INSTALL_VERSION_OR_COMMIT} -channel ${CHANNEL}
+	@go test -timeout=45m -v -tags=upgrademanual -count=1 ./features/upgradecluster/... -installVersionOrCommit ${INSTALL_VERSION_OR_COMMIT} -channel ${CHANNEL}
 
 test-upgrade-node-replacement:
-	@go test -timeout=120m -v -tags=upgradereplacement -count=1 ./entrypoint/upgradecluster/... -installVersionOrCommit ${INSTALL_VERSION_OR_COMMIT} -channel ${CHANNEL}
+	@go test -timeout=120m -v -tags=upgradereplacement -count=1 ./features/upgradecluster/... -installVersionOrCommit ${INSTALL_VERSION_OR_COMMIT} -channel ${CHANNEL}
 
 test-create-mixedos:
-	@go test -timeout=45m -v -count=1 ./entrypoint/mixedoscluster/... $(if ${SONOBUOY_VERSION},-sonobuoyVersion ${SONOBUOY_VERSION})
+	@go test -timeout=45m -v -count=1 ./features/mixedoscluster/... $(if ${SONOBUOY_VERSION},-sonobuoyVersion ${SONOBUOY_VERSION})
 
 test-create-dualstack:
-	@go test -timeout=45m -v -count=1 ./entrypoint/dualstack/...
+	@go test -timeout=45m -v -count=1 ./features/dualstack/...
 
 test-version-bump:
-	@go test -timeout=45m -v -count=1 ./entrypoint/versionbump/... -tags=versionbump \
+	@go test -timeout=45m -v -count=1 ./features/versionbump/... -tags=versionbump \
 	-cmd "${CMD}" \
     -expectedValue ${EXPECTED_VALUE} \
     $(if ${VALUE_UPGRADED},-expectedValueUpgrade ${VALUE_UPGRADED}) \
@@ -91,27 +91,27 @@ test-version-bump:
 	$(if ${DELETE_WORKLOAD},-deleteWorkload ${DELETE_WORKLOAD})
 
 test-components-bump:
-	@go test -timeout=45m -v -count=1 ./entrypoint/versionbump/... -tags=components \
+	@go test -timeout=45m -v -count=1 ./features/versionbump/... -tags=components \
 	-expectedValue ${EXPECTED_VALUE} \
 	$(if ${VALUE_UPGRADED},-expectedValueUpgrade ${VALUE_UPGRADED}) \
 	$(if ${INSTALL_VERSION_OR_COMMIT},-installVersionOrCommit ${INSTALL_VERSION_OR_COMMIT})
 
 test-validate-selinux:
-	@go test -timeout=45m -v -count=1 ./entrypoint/selinux/... \
+	@go test -timeout=45m -v -count=1 ./features/selinux/... \
 	$(if ${INSTALL_VERSION_OR_COMMIT},-installVersionOrCommit ${INSTALL_VERSION_OR_COMMIT}) \
 	$(if ${CHANNEL},-channel ${CHANNEL})
 
 test-restart-service:
-	@go test -timeout=45m -v -count=1 ./entrypoint/restartservice/...
+	@go test -timeout=45m -v -count=1 ./features/restartservice/...
 
 test-reboot-instances:
-	@go test -timeout=45m -v -count=1 ./entrypoint/rebootinstances/...
+	@go test -timeout=45m -v -count=1 ./features/rebootinstances/...
 
 test-private-registry:
-	@go test -timeout=45m -v -tags=privateregistry -count=1 ./entrypoint/airgap/... -destroy ${DESTROY}
+	@go test -timeout=45m -v -tags=privateregistry -count=1 ./features/airgap/... -destroy ${DESTROY}
 
 test-system-default-registry:
-	@go test -timeout=45m -v -tags=systemdefaultregistry -count=1 ./entrypoint/airgap/... -destroy ${DESTROY}
+	@go test -timeout=45m -v -tags=systemdefaultregistry -count=1 ./features/airgap/... -destroy ${DESTROY}
 
 #========================= TestCode Static Quality Check =========================#
 pre-commit:
@@ -119,4 +119,4 @@ pre-commit:
 	@goimports -w .
 	@go vet ./...
 	@golangci-lint run --tests ./...
-	@shellcheck modules/airgap/setup/*.sh
+	@shellcheck modules/aws/airgap/setup/*.sh

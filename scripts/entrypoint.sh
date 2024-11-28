@@ -1,16 +1,17 @@
 #!/bin/sh
 
 ENV_PATH="/go/src/github.com/rancher/distros-test-framework/config/.env"
+[ -n "$ENV_PROVIDER" ] && sed -i "s/ENV_PROVIDER=.*/ENV_PROVIDER=$ENV_PROVIDER/" "$ENV_PATH"
 [ -n "$ENV_PRODUCT" ] && sed -i "s/ENV_PRODUCT=.*/ENV_PRODUCT=$ENV_PRODUCT/" "$ENV_PATH"
 [ -n "$ENV_TFVARS" ] && sed -i "s/ENV_TFVARS=.*/ENV_TFVARS=$ENV_TFVARS/" "$ENV_PATH"
-
+[ -n "$ENV_MODULE" ] && sed -i "s/ENV_MOFULE=.*/ENV_MODULE=$ENV_MODULE/" "$ENV_PATH"
 
 CONFIG_PATH="/go/src/github.com/rancher/distros-test-framework/config/${ENV_PRODUCT}.tfvars"
-[ -n "$INSTALL_VERSION" ] && sed -i "s/k3s_version\s*=\s*.*/k3s_version = \"$INSTALL_VERSION\"/" "$CONFIG_PATH"
-[ -n "$INSTALL_VERSION" ] && sed -i "s/rke2_version\s*=\s*.*/rke2_version = \"$INSTALL_VERSION\"/" "$CONFIG_PATH"
 [ -n "$INSTALL_MODE" ] && sed -i "s/install_mode\s*=\s*.*/install_mode = \"$INSTALL_MODE\"/" "$CONFIG_PATH"
-[ -n "$K3S_CHANNEL" ] && sed -i "s/k3s_channel\s*=\s*.*/k3s_channel = \"$K3S_CHANNEL\"/" "$CONFIG_PATH"
-[ -n "$RKE2_CHANNEL" ] && sed -i "s/rke2_channel\s*=\s*.*/rke2_channel = \"$RKE2_CHANNEL\"/" "$CONFIG_PATH"
+[ -n "$INSTALL_VERSION" ] && sed -i "s/install_version\s*=\s*.*/install_version = \"$INSTALL_VERSION\"/" "$CONFIG_PATH"
+[ -n "$INSTALL_CHANNEL" ] && sed -i "s/install_channel\s*=\s*.*/install_channel = \"$INSTALL_CHANNEL\"/" "$CONFIG_PATH"
+[ -n "$UPGRADE_VERSION" ] && sed -i "s/upgrade_version\s*=\s*.*/upgrade_version = \"$UPGRADE_VERSION\"/" "$CONFIG_PATH"
+[ -n "$UPGRADE_CHANNEL" ] && sed -i "s/upgrade_channel\s*=\s*.*/upgrade_channel = \"$UPGRADE_CHANNEL\"/" "$CONFIG_PATH"
 [ -n "$NO_OF_SERVER_NODES" ] && sed -i "s/no_of_server_nodes = .*/no_of_server_nodes = $NO_OF_SERVER_NODES /" "$CONFIG_PATH"
 [ -n "$NO_OF_WORKER_NODES" ] && sed -i "s/no_of_worker_nodes = .*/no_of_worker_nodes = $NO_OF_WORKER_NODES /" "$CONFIG_PATH"
 [ -n "$SERVER_FLAGS" ] && sed -i "s/server_flags\s*=\s*.*/server_flags = \"$SERVER_FLAGS\"/" "$CONFIG_PATH"
@@ -21,6 +22,6 @@ CONFIG_PATH="/go/src/github.com/rancher/distros-test-framework/config/${ENV_PROD
 [ -n "$AWS_USER" ] && sed -i "s/aws_user\s*=\s*.*/aws_user = \"$AWS_USER\"/" "$CONFIG_PATH"
 [ -n "$DATASTORE_TYPE" ] && sed -i "s/datastore_type\s*=\s*.*/datastore_type = \"$DATASTORE_TYPE\"/" "$CONFIG_PATH"
 
-awk '!/^#|^$|access_key|key_name|username|password|region|qa_space/' "$CONFIG_PATH"
+awk '!/^#|^$|access_key|key_name|username|password|region|hosted_zone/' "$CONFIG_PATH"
 
 exec bash ./scripts/test_runner.sh "$@"

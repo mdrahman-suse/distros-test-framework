@@ -84,7 +84,7 @@ The shell command separators can also be used within the commands like ";" , "|"
 
 Example of an execution with multiple values on k3s using versionbump tag:
 ```bash
-go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
+go test -timeout=45m -v -tags=versionbump  ./features/versionbump/... \
 -cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml : | grep -A2 annotations, k3s -v" \
 -expectedValue "v1.2.0-k3s1,1M, v1.26" \
 -expectedValueUpgrade "v1.2.0-k3s1,1M, v1.27" \
@@ -97,7 +97,7 @@ go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
 
 Example of an execution with less args on k3s using versionbump tag:
 ```bash
-go test -timeout=45m -v -tags=versionbump  ./entrypoint/versionbump/... \
+go test -timeout=45m -v -tags=versionbump  ./features/versionbump/... \
 -cmd "/var/lib/rancher/k3s/data/current/bin/cni, kubectl get pod test-pod -o yaml : | grep -A2 annotations, k3s -v"  \
 -expectedValue "v1.2.0-k3s1,1M, v1.26"  \
 -expectedValueUpgrade "v1.2.0-k3s1,1M, v1.27" \

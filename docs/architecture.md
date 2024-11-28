@@ -8,7 +8,7 @@ For better maintenance, readability and productivity we encourage max of separat
 ```bash
 ./distros-test-framework
 │
-├── entrypoint
+├── features
 │   └───── Entry for tests execution, separated by test runs and test suites
 │
 ├── modules

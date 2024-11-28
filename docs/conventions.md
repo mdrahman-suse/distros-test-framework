@@ -1,11 +1,11 @@
 ## Best Practices, Standards, and Conventions
 
 ### TestSuite naming convention:
-- All testsuites should be placed under `./entrypoint/<TESTSUITE_NAME>`.
+- All testsuites should be placed under `./features/<TESTSUITE_NAME>`.
 - All testsuite functions should be named: `<TESTSUITE_NAME>_suite_test.go`.
 
 ### Testcase naming convention:
-- All tests should be placed under `./testcase/<TESTNAME>`.
+- All tests should be placed under `./features/<TESTNAME>`.
 - All test functions should be named: `Test<TESTNAME>`.
 
 ### Contributing:

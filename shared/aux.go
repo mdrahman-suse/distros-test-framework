@@ -530,6 +530,31 @@ func ReplaceFileContents(filePath string, replaceKV map[string]string) error {
 	return nil
 }
 
+func MergedFileContents(filesToMerge []string, destFile string) error {
+	outFile, err := os.Create(destFile)
+	if err != nil {
+		return ReturnLogError("Error creating output file: %v", err)
+	}
+	defer outFile.Close()
+
+	for _, file := range filesToMerge {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			LogLevel("info","Error reading file content: %v", err)
+			continue
+		}
+
+		_, err = outFile.Write(data)
+		if err != nil {
+			return ReturnLogError("Error writing to output file: %v", err)
+		}
+	}
+
+	LogLevel("info","Files merged successfully!")
+
+	return nil
+}
+
 // stringInSlice verify if a string is found in the list of strings.
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {

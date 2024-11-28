@@ -1,7 +1,7 @@
 ## K3S variables -- Fill these in with your desired values.
 
-k3s_version    = "v1.27.4+k3s1"
-k3s_channel    = "latest"
+install_version    = "v1.27.4+k3s1"
+install_channel    = "latest"
 server_flags   = "protect-kernel-defaults: true\n"
 worker_flags   = "protect-kernel-defaults: true\n"
 no_of_server_nodes = 3
@@ -39,7 +39,7 @@ username = "ShylajaD"
 
 ## AWS variables
 region             = "us-east-2"
-qa_space           = "qa.rancher.space"
+hosted_zone           = "qa.rancher.space"
 ec2_instance_class = "t3a.medium"
 vpc_id             = "<vpc_id>"
 subnets            = "<subnet_id>"

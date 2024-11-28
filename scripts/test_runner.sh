@@ -56,15 +56,15 @@ function run() {
 if [ -n "${TEST_DIR}" ]; then
     if [ "${TEST_DIR}" = "upgradecluster" ]; then
         if [ "${TEST_TAG}" = "upgrademanual" ]; then
-            go test -timeout=65m -v -tags=upgrademanual -count=1 ./entrypoint/upgradecluster/... -installVersionOrCommit "${INSTALL_VERSION_OR_COMMIT}" -channel "${CHANNEL}"
+            go test -timeout=65m -v -tags=upgrademanual -count=1 ./features/upgradecluster/... -installVersionOrCommit "${INSTALL_VERSION_OR_COMMIT}" -channel "${CHANNEL}"
         elif [ "${TEST_TAG}" = "upgradesuc" ]; then
-            go test -timeout=65m -v -tags=upgradesuc -count=1 ./entrypoint/upgradecluster/... -sucUpgradeVersion "${SUC_UPGRADE_VERSION}" -channel "${CHANNEL}"
+            go test -timeout=65m -v -tags=upgradesuc -count=1 ./features/upgradecluster/... -sucUpgradeVersion "${SUC_UPGRADE_VERSION}" -channel "${CHANNEL}"
         elif [ "${TEST_TAG}" = "upgradereplacement" ]; then
-            go test -timeout=120m -v -tags=upgradereplacement -count=1 ./entrypoint/upgradecluster/... -installVersionOrCommit "${INSTALL_VERSION_OR_COMMIT}" -channel "${CHANNEL}"
+            go test -timeout=120m -v -tags=upgradereplacement -count=1 ./features/upgradecluster/... -installVersionOrCommit "${INSTALL_VERSION_OR_COMMIT}" -channel "${CHANNEL}"
         fi
     elif [ "${TEST_DIR}" = "versionbump" ]; then
         declare -a OPTS
-          OPTS=(-timeout=65m -v -count=1 ./entrypoint/versionbump/... -tags="${TEST_TAG}")
+          OPTS=(-timeout=65m -v -count=1 ./features/versionbump/... -tags="${TEST_TAG}")
             OPTS+=(-cmd "${CMD}" -expectedValue "${EXPECTED_VALUE}")
              [ -n "${VALUE_UPGRADED}" ] && OPTS+=(-expectedValueUpgrade "${VALUE_UPGRADED}")
              [ -n "${INSTALL_VERSION_OR_COMMIT}" ] && OPTS+=(-installVersionOrCommit "${INSTALL_VERSION_OR_COMMIT}")
@@ -78,13 +78,13 @@ if [ -n "${TEST_DIR}" ]; then
         go test "${OPTS[@]}"
     elif [ "${TEST_DIR}" = "mixedoscluster" ]; then
          if [ -n "${SONOBUOY_VERSION}" ]; then
-            go test -timeout=55m -v -count=1 ./entrypoint/mixedoscluster/... -sonobuoyVersion "${SONOBUOY_VERSION}"
+            go test -timeout=55m -v -count=1 ./features/mixedoscluster/... -sonobuoyVersion "${SONOBUOY_VERSION}"
         else
-            go test -timeout=55m -v -count=1 ./entrypoint/mixedoscluster/...
+            go test -timeout=55m -v -count=1 ./features/mixedoscluster/...
          fi
     elif [ "${TEST_DIR}" = "deployrancher" ]; then
         declare -a OPTS
-          OPTS=(-timeout=45m -v -count=1 ./entrypoint/deployrancher/... -tags=deployrancher)
+          OPTS=(-timeout=45m -v -count=1 ./features/deployrancher/... -tags=deployrancher)
             [ -n "${CERT_MANAGER_VERSION}" ] && OPTS+=(-certManagerVersion "${CERT_MANAGER_VERSION}")
             [ -n "${CHARTS_VERSION}" ] && OPTS+=(-chartsVersion "${CHARTS_VERSION}")
             [ -n "${CHARTS_REPO_NAME}" ] && OPTS+=(-chartsRepoName "${CHARTS_REPO_NAME}")
@@ -92,27 +92,27 @@ if [ -n "${TEST_DIR}" ]; then
             [ -n "${CHARTS_ARGS}" ] && OPTS+=(-chartsArgs "${CHARTS_ARGS}")
         go test "${OPTS[@]}"
     elif [ "${TEST_DIR}" = "dualstack" ]; then
-        go test -timeout=65m -v -count=1 ./entrypoint/dualstack/...
+        go test -timeout=65m -v -count=1 ./features/dualstack/...
     elif [  "${TEST_DIR}" = "createcluster" ]; then
-        go test -timeout=60m -v -count=1 ./entrypoint/createcluster/...
+        go test -timeout=60m -v -count=1 ./features/createcluster/...
     elif [ "${TEST_DIR}" = "validatecluster" ]; then
-        go test -timeout=65m -v -count=1 ./entrypoint/validatecluster/...
+        go test -timeout=65m -v -count=1 ./features/validatecluster/...
     elif [ "${TEST_DIR}" = "selinux" ]; then
-        go test -timeout=65m -v -count=1 ./entrypoint/selinux/...
+        go test -timeout=65m -v -count=1 ./features/selinux/...
     elif [ "${TEST_DIR}" = "certrotate" ]; then
-        go test -timeout=65m -v -count=1 ./entrypoint/certrotate/...
+        go test -timeout=65m -v -count=1 ./features/certrotate/...
     elif [ "${TEST_DIR}" = "secretsencrypt" ]; then
-        go test -timeout=45m -v -count=1 ./entrypoint/secretsencrypt/...
+        go test -timeout=45m -v -count=1 ./features/secretsencrypt/...
     elif [ "${TEST_DIR}" = "restartservice" ]; then
-        go test -timeout=45m -v -count=1 ./entrypoint/restartservice/...
+        go test -timeout=45m -v -count=1 ./features/restartservice/...
     elif [ "${TEST_DIR}" = "clusterreset" ]; then
-        go test -timeout=120m -v -count=1 ./entrypoint/clusterreset/...
+        go test -timeout=120m -v -count=1 ./features/clusterreset/...
     elif [ "${TEST_DIR}" = "rebootinstances" ]; then
-        go test -timeout=120m -v -count=1 ./entrypoint/rebootinstances/...
+        go test -timeout=120m -v -count=1 ./features/rebootinstances/...
     elif [ "${TEST_DIR}" = "airgap" ]; then
         declare -a OPTS
         if [[ "${TEST_TAG}" == "privateregistry" ]] || [[ "${TEST_TAG}" == "systemdefaultregistry" ]]; then
-          OPTS=(-timeout=60m -v -count=1 ./entrypoint/airgap/... -tags="${TEST_TAG}" -destroy "${DESTROY}")
+          OPTS=(-timeout=60m -v -count=1 ./features/airgap/... -tags="${TEST_TAG}" -destroy "${DESTROY}")
             [ -n "${IMAGE_REGISTRY_URL}" ] && OPTS+=(-imageRegistryUrl "${IMAGE_REGISTRY_URL}")
             [ -n "${REGISTRY_USERNAME}" ] && OPTS+=(-registryUsername "${REGISTRY_USERNAME}")
             [ -n "${REGISTRY_PASSWORD}" ] && OPTS+=(-registryPassword "${REGISTRY_PASSWORD}")
