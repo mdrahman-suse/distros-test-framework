@@ -102,11 +102,11 @@ func InstallOnAirgapAgents(cluster *shared.Cluster, airgapMethod string) {
 
 // SetupAirgapRegistry sets bastion node for airgap registry.
 func SetupAirgapRegistry(cluster *shared.Cluster, flags *customflag.FlagConfig, airgapMethod string) (err error) {
-	// shared.LogLevel("info", "Downloading %v artifacts...", cluster.Config.Product)
-	// _, err = GetArtifacts(cluster, "linux", flags.AirgapFlag.ImageRegistryUrl, flags.AirgapFlag.TarballType)
-	// if err != nil {
-	// 	return fmt.Errorf("error downloading %v artifacts: %w", cluster.Config.Product, err)
-	// }
+	shared.LogLevel("info", "Downloading %v artifacts...", cluster.Config.Product)
+	_, err = GetArtifacts(cluster, "linux", flags.AirgapFlag.ImageRegistryUrl, flags.AirgapFlag.TarballType)
+	if err != nil {
+		return fmt.Errorf("error downloading %v artifacts: %w", cluster.Config.Product, err)
+	}
 
 	switch airgapMethod {
 	case "private_registry":
@@ -123,11 +123,11 @@ func SetupAirgapRegistry(cluster *shared.Cluster, flags *customflag.FlagConfig, 
 		}
 	}
 
-	// shared.LogLevel("info", "Perform image pull/tag/push...")
-	// err = podmanCmds(cluster, "linux", flags)
-	// if err != nil {
-	// 	return fmt.Errorf("error performing docker actions: %w", err)
-	// }
+	shared.LogLevel("info", "Perform image pull/tag/push...")
+	err = podmanCmds(cluster, "linux", flags)
+	if err != nil {
+		return fmt.Errorf("error performing docker actions: %w", err)
+	}
 
 	return err
 }
