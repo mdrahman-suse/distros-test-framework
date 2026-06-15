@@ -85,6 +85,21 @@ func randomSuffix(n int) string {
 	return string(out)
 }
 
+// firstTFListItem extracts the first element of a tfvars list value
+// (e.g. `["sg-xxx","sg-yyy"]` → `sg-xxx`). Returns the input unchanged if it
+// isn't list-shaped.
+func firstTFListItem(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "[") {
+		return s
+	}
+	s = strings.TrimPrefix(s, "[")
+	s = strings.TrimSuffix(s, "]")
+	first, _, _ := strings.Cut(s, ",")
+
+	return strings.Trim(strings.TrimSpace(first), `"`)
+}
+
 func tofuWorkdir(workspace string) string {
 	return filepath.Join(string(filepath.Separator), "tmp", "qainfra-tofu-"+workspace)
 }
@@ -142,6 +157,7 @@ func setupSSHConfiguration(i *driver.InfraConfig, envConfig environmentConfig) (
 		PrivKeyPath: sshPrivKeyPath,
 		User:        sshUser,
 		PubKeyPath:  tmpSSHPubPath,
+		KeyName:     i.Cluster.SSH.KeyName,
 	}, nil
 }
 
@@ -256,9 +272,11 @@ func loadVarsFromFile(clusterConfig *driver.Cluster, airgapSetup, proxySetup boo
 				clusterConfig.Aws.Subnets = value
 			case "availability_zone":
 				clusterConfig.Aws.AvailabilityZone = value
-			case "sg_id":
-				clusterConfig.Aws.SgId = value
-			case "vpc_id":
+			case "sg_id", "aws_security_group":
+				// qainfra writes `aws_security_group = ["sg-xxx"]` (a list).
+				// CreateInstances takes a single SG, so use the first element.
+				clusterConfig.Aws.SgId = firstTFListItem(value)
+			case "vpc_id", "aws_vpc":
 				clusterConfig.Aws.VPCID = value
 			case "public_ssh_key":
 				// this value came from runtime not from the vars.tfvars file.
@@ -309,9 +327,9 @@ func buildClusterConfig(config *driver.InfraConfig) error {
 		config.Cluster.Config.DataStore = "etcd"
 	}
 
-	nodes, err := extractNodesFromTFState(config)
+	nodes, err := extractNodesFromTofuOutput(config)
 	if err != nil {
-		return fmt.Errorf("failed to extract nodes from state: %w", err)
+		return fmt.Errorf("failed to extract nodes from tofu output: %w", err)
 	}
 
 	var serverIPs, agentIPs []string
@@ -328,6 +346,8 @@ func buildClusterConfig(config *driver.InfraConfig) error {
 	config.Cluster.NumServers = len(serverIPs)
 	config.Cluster.NumAgents = len(agentIPs)
 	config.Cluster.Status = "cluster created"
+
+	applySplitRolesIfEnabled(config, nodes)
 
 	resources.LogLevel("info", "Built cluster config: %d servers, %d agents", len(serverIPs), len(agentIPs))
 	resources.LogLevel("debug", "Server IPs: %v", serverIPs)

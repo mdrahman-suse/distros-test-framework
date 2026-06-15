@@ -22,16 +22,24 @@ func TestNvidiaGPUFunctionality(cluster *driver.Cluster, nvidiaVersion string) {
 	targetNodeIP := cluster.ServerIPs[0]
 	nodeOs = cluster.NodeOS
 
+	// SLE Micro is read-only / transactional; NVIDIA driver/operator path isn't supported here.
+	// Bail before hardware detection so we don't install pciutils on a host we can't drive anyway.
+	if strings.EqualFold(nodeOs, "slemicro") {
+		resources.LogLevel("warn", "Skipping NVIDIA test on %q: SLE Micro is not supported (transactional/read-only root)", nodeOs)
+		return
+	}
+
 	verifyGPUHardwarePresence(targetNodeIP, nodeOs)
 
-	switch nodeOs {
-	case "ubuntu":
+	osLower := strings.ToLower(nodeOs)
+	switch {
+	case osLower == "ubuntu" || strings.HasPrefix(osLower, "debian"):
 		resources.LogLevel("info", "Proceeding with Ubuntu setup for NVIDIA driver installation version: %s", nvidiaVersion)
 		initialSetupUbuntu(targetNodeIP, nvidiaVersion)
-	case "rhel", "rhel8", "rhel9":
+	case strings.HasPrefix(osLower, "rhel") || strings.HasPrefix(osLower, "centos") || strings.HasPrefix(osLower, "rocky") || strings.HasPrefix(osLower, "oracle"):
 		resources.LogLevel("info", "Proceeding with RHEL setup for NVIDIA driver installation version: %s", nvidiaVersion)
 		initialSetupRHEL(targetNodeIP, nvidiaVersion)
-	case "sles15":
+	case strings.HasPrefix(osLower, "sles") || strings.HasPrefix(osLower, "suse") || strings.HasPrefix(osLower, "opensuse"):
 		resources.LogLevel("info", "Proceeding with SLES setup for NVIDIA driver installation with latest available driver")
 		initialSetupSles(targetNodeIP)
 	default:
@@ -98,16 +106,17 @@ func ensureLspciInstalled(ip, nodeOs string) {
 
 	resources.LogLevel("info", "lspci not found, installing pciutils package for OS: %s", nodeOs)
 	var installCmd string
-	switch nodeOs {
-	case "ubuntu":
+	osLower := strings.ToLower(nodeOs)
+	switch {
+	case osLower == "ubuntu" || strings.HasPrefix(osLower, "debian"):
 		installCmd = "sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt install -y pciutils"
-	case "rhel", "rhel8", "rhel9":
+	case strings.HasPrefix(osLower, "rhel") || strings.HasPrefix(osLower, "centos") || strings.HasPrefix(osLower, "rocky") || strings.HasPrefix(osLower, "oracle"):
 		installCmd = "sudo yum install -y pciutils || sudo dnf install -y pciutils"
-	case "sles15":
-		installCmd = "sudo zypper install -y pciutils"
+	case strings.HasPrefix(osLower, "sles") || strings.HasPrefix(osLower, "suse") || strings.HasPrefix(osLower, "opensuse"):
+		installCmd = "sudo zypper --non-interactive install pciutils"
 	default:
-		resources.LogLevel("warn", "Unknown OS %s, attempting yum/dnf install", nodeOs)
-		installCmd = "sudo yum install -y pciutils || sudo dnf install -y pciutils || sudo apt install -y pciutils"
+		resources.LogLevel("warn", "Unknown OS %q, attempting all known package managers", nodeOs)
+		installCmd = "sudo zypper --non-interactive install pciutils || sudo yum install -y pciutils || sudo dnf install -y pciutils || sudo apt install -y pciutils"
 	}
 
 	_, installErr := resources.RunCommandOnNode(installCmd, ip)

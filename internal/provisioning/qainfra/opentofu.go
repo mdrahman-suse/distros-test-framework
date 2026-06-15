@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,6 +37,18 @@ func executeOpenTofuOperations(config *driver.InfraConfig) error {
 	}
 
 	args := []string{"apply", "-auto-approve", "-var-file=" + config.InfraProvisioner.TFVarsPath}
+
+	// Optionally override the `nodes` topology from env vars (split_roles or
+	// no_of_server_nodes / no_of_worker_nodes).
+	nodesJSON, err := buildNodesTFVar()
+	if err != nil {
+		return fmt.Errorf("build nodes topology from env: %w", err)
+	}
+	if nodesJSON != "" {
+		args = append(args, "-var=nodes="+nodesJSON)
+		resources.LogLevel("info", "Overriding nodes topology: %s", nodesJSON)
+	}
+
 	if runTimeoutErr := runCmdWithTimeout(config.InfraProvisioner.TFNodeSource, 15*time.Minute,
 		"tofu", args...); runTimeoutErr != nil {
 		return fmt.Errorf("tofu apply failed: %w", runTimeoutErr)
@@ -78,6 +91,30 @@ func setOrAppendTFVar(tfvarsPath, key, value string) error {
 
 	reg := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(key) + `\s*=\s*".*"\s*$`)
 	line := []byte(fmt.Sprintf(`%s = %q`, key, value))
+
+	if reg.Match(fileData) {
+		fileData = reg.ReplaceAll(fileData, line)
+	} else {
+		if len(fileData) > 0 && !bytes.HasSuffix(fileData, []byte{'\n'}) {
+			fileData = append(fileData, '\n')
+		}
+
+		fileData = append(fileData, append(line, '\n')...)
+	}
+
+	return os.WriteFile(tfvarsPath, fileData, 0o644)
+}
+
+// setOrAppendTFVarRaw is the bool/numeric sibling of setOrAppendTFVar.
+func setOrAppendTFVarRaw(tfvarsPath, key, value string) error {
+	fileData, err := os.ReadFile(tfvarsPath)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", tfvarsPath, err)
+	}
+
+	// Match an existing assignment of any value shape (bare, quoted, list).
+	reg := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(key) + `\s*=\s*.*$`)
+	line := []byte(fmt.Sprintf(`%s = %s`, key, value))
 
 	if reg.Match(fileData) {
 		fileData = reg.ReplaceAll(fileData, line)
@@ -163,6 +200,18 @@ func configureTerraformFiles(config *driver.InfraConfig) error {
 		return fmt.Errorf("set public_ssh_key in tfvars: %w", err)
 	}
 
+	if err := setOrAppendTFVarRaw(
+		config.InfraProvisioner.Terraform.TFVarsPath,
+		"create_eip",
+		strconv.FormatBool(strings.EqualFold(os.Getenv("CREATE_EIP"), "true")),
+	); err != nil {
+		return fmt.Errorf("set create_eip in tfvars: %w", err)
+	}
+
+	if err := threadRuntimeEnvIntoTFVars(config.InfraProvisioner.Terraform.TFVarsPath); err != nil {
+		return err
+	}
+
 	if err := loadQAInfraTFVars(
 		config.Cluster,
 		config.InfraProvisioner.AirgapSetup,
@@ -175,18 +224,29 @@ func configureTerraformFiles(config *driver.InfraConfig) error {
 	return nil
 }
 
+// threadRuntimeEnvIntoTFVars copies AWS_AMI and SSH_USER from the shell env
+// into vars.tfvars so users can switch OS/SSH user without editing the file
+// — matches the override behavior the legacy path had.
+func threadRuntimeEnvIntoTFVars(tfvarsPath string) error {
+	if ami := os.Getenv("AWS_AMI"); ami != "" {
+		if err := setOrAppendTFVar(tfvarsPath, "aws_ami", ami); err != nil {
+			return fmt.Errorf("set aws_ami in tfvars: %w", err)
+		}
+	}
+	if sshUser := os.Getenv("SSH_USER"); sshUser != "" {
+		if err := setOrAppendTFVar(tfvarsPath, "aws_ssh_user", sshUser); err != nil {
+			return fmt.Errorf("set aws_ssh_user in tfvars: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // updateVarsFile updates the vars.tfvars file with unique resource names and
 // replaces product variables.
 //
 // The assembled aws_hostname_prefix becomes part of AWS load-balancer and
-// target-group names, which are capped at 32 chars. The longest derived
-// suffix from the tofu module is "-tg-9345" (8 chars), so the prefix itself
-// must be ≤ 24 chars or `tofu apply` fails with:
-//
-//	Error: "name" cannot be longer than 32 characters
-//
-// We reject too-long inputs up front with a clear message instead of letting
-// Tofu fail half-way through provisioning.
+// target-group names, which are capped at 32 chars.
 const awsHostnamePrefixMaxLen = 24
 
 func updateVarsFile(varsFilePath, uniqueID, product, resourceName string) error {
@@ -232,7 +292,7 @@ func updateMainTfModuleSource(qaInfraProvider, mainTfPath string) error {
 	placeholder := "placeholder-for-remote-module"
 	modulePath := qaInfraProvider + "/modules/cluster_nodes"
 
-	srcModule := fmt.Sprintf("github.com/rancher/qa-infra-automation//tofu/%s?ref=%s", modulePath, "main")
+	srcModule := fmt.Sprintf("github.com/fmoral2/qa-infra-automation//tofu/%s?ref=%s", modulePath, "split-role-feat")
 	contentStr = strings.ReplaceAll(contentStr, placeholder, srcModule)
 
 	if writeErr := os.WriteFile(mainTfPath, []byte(contentStr), 0o644); writeErr != nil {

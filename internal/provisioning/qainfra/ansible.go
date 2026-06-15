@@ -17,9 +17,13 @@ import (
 func setupAnsibleEnvironment(config *driver.InfraConfig) error {
 	resources.LogLevel("info", "Pulling Ansible playbooks for %s installation...", config.Product)
 
+	const (
+		cloneURL = "https://github.com/fmoral2/qa-infra-automation.git"
+		cloneRef = "split-role-feat"
+	)
 	if err := runCmdWithTimeout(config.InfraProvisioner.RootDir, 2*time.Minute,
 		"git", "clone", "--depth", "1", "--filter=blob:none", "--sparse", "--branch",
-		"main", "https://github.com/rancher/qa-infra-automation.git", config.InfraProvisioner.TempDir); err != nil {
+		cloneRef, cloneURL, config.InfraProvisioner.TempDir); err != nil {
 		return fmt.Errorf("git clone failed: %w", err)
 	}
 
@@ -48,17 +52,13 @@ func setupAnsibleEnvironment(config *driver.InfraConfig) error {
 	return nil
 }
 
-// patchRKE2ConfigTemplate appends a node-external-ip directive to the cloned.
-// rke2_config role's config.yaml.j2.
-// The substitution uses ansible_host, which our static inventory populates
-// from cluster_nodes_json[].public_ip per node.
+// patchRKE2ConfigTemplate appends a node-external-ip directive to the rke2_config role's config.yaml.j2.
 func patchRKE2ConfigTemplate(config *driver.InfraConfig) error {
 	templatePath := filepath.Join(
 		config.InfraProvisioner.TempDir,
 		"ansible", "roles", "rke2_config", "templates", "config.yaml.j2",
 	)
 	if _, err := os.Stat(templatePath); err != nil {
-		// Sparse checkout may exclude this path on a future upstream
 		// reorganization; warn loudly but don't hard-fail provisioning.
 		resources.LogLevel("warn",
 			"rke2_config template not found at %s — kubelet will not advertise "+

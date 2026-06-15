@@ -89,15 +89,26 @@ func buildStaticInventory(data *clusterNodesJSON, product string) string {
 
 // assignNodeGroups maps each node name to its inventory group (master/servers/
 // workers), applying the mutually-exclusive first-match-wins rules.
-func assignNodeGroups(data *clusterNodesJSON, product string) map[string]string {
-	masterRoles := []string{"etcd"}
-	if strings.EqualFold(product, "k3s") {
-		masterRoles = []string{"cp"}
-	}
-
+//
+// "master" is the first node with the `etcd` role — regardless of product.
+// This matches infrastructure/qainfra/main.tf's `first_etcd_index` (which
+// renames that node to "master" in its EC2 Name tag), nodeextractor.go's
+// sort key, AND the upstream qa-infra-automation k3s/default/k3s-playbook.yml
+// host group of the same name, so every source of truth agrees.
+//
+// kube_api_host correctly points at the master too: the upstream K3s play
+// runs the full K3s server (cluster-init: true, no --disable-* flags) on the
+// master group regardless of role labels. Role names ["etcd"], ["cp"],
+// ["etcd","cp","worker"], etc. only translate to scheduling taints/labels in
+// the rendered config.yaml (role-etcd=true, NoExecute taint, …). Every node
+// in master or servers runs kube-apiserver + etcd + scheduler + controller-
+// manager, so any of them is a valid API endpoint.
+//
+// For RKE2 the same rule applies and it has always been etcd-first.
+func assignNodeGroups(data *clusterNodesJSON, _ string) map[string]string {
 	assigned := make(map[string]string) // node name -> group
 	for _, n := range data.Nodes {
-		if hasAnyRole(n.Roles, masterRoles) {
+		if hasAnyRole(n.Roles, []string{"etcd"}) {
 			assigned[n.Name] = "master"
 
 			break
@@ -108,7 +119,13 @@ func assignNodeGroups(data *clusterNodesJSON, product string) map[string]string 
 			continue
 		}
 		switch {
-		case hasAnyRole(n.Roles, []string{"cp"}):
+		// Any remaining node with etcd or cp is a K3s/RKE2 server. Matches
+		// isServerRole in config.go and the legacy "node_role.sh" classification
+		// (etcd-only, etcd-cp, cp-only, cp-worker all install as `server`).
+		// Without etcd here, extra etcd-only nodes in a split-role topology
+		// would be provisioned by Tofu but skipped by Ansible — silently
+		// shrinking the cluster.
+		case hasAnyRole(n.Roles, []string{"etcd", "cp"}):
 			assigned[n.Name] = "servers"
 		case hasAnyRole(n.Roles, []string{"worker"}):
 			assigned[n.Name] = "workers"

@@ -88,3 +88,9 @@ variable "proxy_setup" {
   type        = bool
   default     = false
 }
+
+variable "create_eip" {
+  description = "Allocate Elastic IPs and associate them with each node so reboots keep stable public addresses. Required by the rebootinstances test."
+  type        = bool
+  default     = false
+}

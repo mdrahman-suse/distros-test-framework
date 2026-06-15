@@ -88,30 +88,30 @@ func CheckIngressCompat(cfg *config.Env) {
 	if cfg.Product != "rke2" {
 		return
 	}
-	pinned := extractIngressControllerPin(cfg.ServerFlags)
-	if pinned == "" {
+	ingress := extractIngressController(cfg.ServerFlags)
+	if ingress == "" {
 		return
 	}
-	atLeast136 := isRKE2AtLeast(cfg.InstallVersion, 1, 36)
+	atLeast136 := isRKE2At(cfg.InstallVersion, 1, 36)
 
-	if pinned == "traefik" && !atLeast136 {
+	if ingress == "traefik" && !atLeast136 {
 		resources.LogLevel("error",
 			"SERVER_FLAGS pins ingress-controller: traefik but INSTALL_VERSION=%q is "+
 				"pre-1.36 (no bundled traefik chart). Drop the ingress-controller line "+
 				"or bump INSTALL_VERSION to >= v1.36.x.", cfg.InstallVersion)
 		os.Exit(1)
 	}
-	if (pinned == "nginx" && !atLeast136) || (pinned == "traefik" && atLeast136) {
+	if (ingress == "nginx" && !atLeast136) || (ingress == "traefik" && atLeast136) {
 		resources.LogLevel("error",
 			"SERVER_FLAGS pins ingress-controller: %s but that's already the "+
 				"RKE2 %s default. Remove the line — pinning is only meaningful "+
 				"when overriding (e.g., ingress-controller: nginx on >=1.36 for "+
-				"legacy compat).", pinned, cfg.InstallVersion)
+				"legacy compat).", ingress, cfg.InstallVersion)
 		os.Exit(1)
 	}
 }
 
-func extractIngressControllerPin(serverFlags string) string {
+func extractIngressController(serverFlags string) string {
 	for _, line := range strings.Split(serverFlags, "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "ingress-controller:") {
@@ -128,13 +128,14 @@ func extractIngressControllerPin(serverFlags string) string {
 
 var rke2MinorVersionRE = regexp.MustCompile(`^v?(\d+)\.(\d+)`)
 
-func isRKE2AtLeast(installVersion string, major, minor int) bool {
-	m := rke2MinorVersionRE.FindStringSubmatch(installVersion)
-	if len(m) < 3 {
+func isRKE2At(installVersion string, major, minor int) bool {
+	min := rke2MinorVersionRE.FindStringSubmatch(installVersion)
+	if len(min) < 3 {
 		return false
 	}
-	maj, errMaj := strconv.Atoi(m[1])
-	minVal, errMin := strconv.Atoi(m[2])
+
+	maj, errMaj := strconv.Atoi(min[1])
+	minVal, errMin := strconv.Atoi(min[2])
 	if errMaj != nil || errMin != nil {
 		return false
 	}

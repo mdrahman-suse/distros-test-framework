@@ -89,7 +89,7 @@ func loadEnv() (*Env, error) {
 		SSHKeyName:        os.Getenv("SSH_KEY_NAME"),
 		ResourceName:      os.Getenv("RESOURCE_NAME"),
 		NodeOS:            os.Getenv("NODE_OS"),
-		Channel:           os.Getenv("CHANNEL"),
+		Channel:           firstNonEmpty(os.Getenv("INSTALL_CHANNEL"), os.Getenv("CHANNEL")),
 		CNI:               os.Getenv("CNI"),
 		ServerFlags:       os.Getenv("SERVER_FLAGS"),
 		WorkerFlags:       os.Getenv("WORKER_FLAGS"),
@@ -236,4 +236,13 @@ func setEnv(fullPath string) error {
 	}
 
 	return scanner.Err()
+}
+
+func firstNonEmpty(s ...string) string {
+	for _, v := range s {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
