@@ -135,7 +135,12 @@ func decodeKubeConfig(kubeConfig string) (string, error) {
 		return "", resources.ReturnLogError("failed to decode kubeconfig: %v\n", err)
 	}
 
-	localKubeConfigPath := fmt.Sprintf("/tmp/%s_kubeconfig", os.Getenv("resource_name"))
+	// qainfra sets the uppercase form; legacy set the lowercase one via tfvars.
+	resourceName := os.Getenv("RESOURCE_NAME")
+	if resourceName == "" {
+		resourceName = os.Getenv("resource_name")
+	}
+	localKubeConfigPath := fmt.Sprintf("/tmp/%s_kubeconfig", resourceName)
 	writeErr := os.WriteFile(localKubeConfigPath, dec, 0o644)
 	if writeErr != nil {
 		return "", resources.ReturnLogError("failed to write kubeconfig file: %v\n", writeErr)

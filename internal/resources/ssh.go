@@ -121,14 +121,20 @@ func RunCommandOnNodeWithRetry(cmd, ip string, cfg *RetryCfg) (string, error) {
 // WaitForSSHReady waits for SSH to be ready on the node.
 // Default max wait time: 3 mins. Retry 'SSH is ready' check every 10 seconds.
 func WaitForSSHReady(ip string) error {
+	return WaitForSSHReadyWithTimeout(ip, 3*time.Minute)
+}
+
+// WaitForSSHReadyWithTimeout is WaitForSSHReady with a caller-chosen window —
+// fresh instances (provisioning/replacement) can take >5 min to authorize keys.
+func WaitForSSHReadyWithTimeout(ip string, maxWait time.Duration) error {
 	ticker := time.NewTicker(10 * time.Second)
-	timeout := time.After(3 * time.Minute)
+	timeout := time.After(maxWait)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-timeout:
-			return fmt.Errorf("timed out waiting 3 mins for SSH Ready on node ip %s", ip)
+			return fmt.Errorf("timed out waiting %s for SSH Ready on node ip %s", maxWait, ip)
 		case <-ticker.C:
 			cmdOutput, sshErr := RunCommandOnNode("ls -lrt", ip)
 			if sshErr != nil {

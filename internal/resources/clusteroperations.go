@@ -35,7 +35,6 @@ func KubectlCommand(cluster *driver.Cluster, destination, action, source string,
 		cmdPrefix = action
 	}
 
-	resourceName := os.Getenv("resource_name")
 	var cmd string
 	switch destination {
 	case "host":
@@ -43,10 +42,12 @@ func KubectlCommand(cluster *driver.Cluster, destination, action, source string,
 
 		return kubectlCmdOnHost(cmd)
 	case "node":
-		serverIP, _, err := ExtractServerIP(resourceName)
-		if err != nil {
-			return "", ReturnLogError("failed to extract server IP: %w", err)
+		// The cluster config already carries real node IPs — parsing the kubeconfig
+		// would return the API endpoint (NLB/FQDN on qainfra), which is not SSH-able.
+		if len(cluster.ServerIPs) == 0 {
+			return "", ReturnLogError("cluster has no server IPs")
 		}
+		serverIP := cluster.ServerIPs[0]
 		kubeconfigFlagRemotePath := fmt.Sprintf("/etc/rancher/%s/%s.yaml", cluster.Config.Product, cluster.Config.Product)
 		kubeconfigFlagRemote := " --kubeconfig=" + kubeconfigFlagRemotePath
 		cmd = cmdPrefix + " " + source + " " + strings.Join(args, " ") + kubeconfigFlagRemote
