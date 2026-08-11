@@ -22,7 +22,7 @@ func setupAnsibleEnvironment(config *driver.InfraConfig) error {
 	// same fork/branch.
 	if err := runCmdWithTimeout(config.InfraProvisioner.RootDir, 2*time.Minute,
 		"git", "clone", "--depth", "1", "--filter=blob:none", "--sparse", "--branch",
-		qaInfraRef, qaInfraCloneURL, config.InfraProvisioner.TempDir); err != nil {
+		qaInfraRef(), qaInfraCloneURL, config.InfraProvisioner.TempDir); err != nil {
 		return fmt.Errorf("git clone failed: %w", err)
 	}
 

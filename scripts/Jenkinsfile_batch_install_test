@@ -82,7 +82,12 @@ node {
                 string(name: 'QASE_PROJECT_ID', value: "${QASE_PROJECT_ID}"),
                 string(name: 'QASE_RUN_ID', value: "${QASE_RUN_ID}"),
               ]
-              
+
+              // qainfra canary: forward the qa-infra-automation ref when the batch sets one.
+              if (test_name == "validatecluster_qainfra" && "${env.QA_INFRA_REF}" != "null" && "${env.QA_INFRA_REF}" != "") {
+                install_params << string(name: 'QA_INFRA_REF', value: "${env.QA_INFRA_REF}")
+              }
+
               def product_name = "${env.PRODUCT_NAME}"
               def suffix = (product_name == "rke2") ? "_rpm" : ""
               def testToJobMap = [
@@ -91,6 +96,7 @@ node {
                 "ipv6only": "${product_name}_ipv6_only",
                 "clusterrestore": "${product_name}_cluster_restore",
                 "validatecluster": "${product_name}_validate_cluster",
+                "validatecluster_qainfra": "k3s_validate_cluster_qainfra",
                 "validatecluster_arm": "${product_name}_validate_cluster_arm",
                 "validatecluster_rpm": "rke2_validate_cluster_rpm",
                 "validatecluster_arm_rpm": "rke2_validate_cluster_arm_rpm",

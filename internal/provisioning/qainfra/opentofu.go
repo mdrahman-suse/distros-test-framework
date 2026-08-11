@@ -228,18 +228,22 @@ func configureTerraformFiles(config *driver.InfraConfig) error {
 	return nil
 }
 
-// threadRuntimeEnvIntoTFVars copies AWS_AMI and SSH_USER from the shell env
-// into vars.tfvars so users can switch OS/SSH user without editing the file
-// — matches the override behavior the legacy path had.
+// threadRuntimeEnvIntoTFVars copies runtime env overrides (AMI, SSH user, instance
+// shape, region) into vars.tfvars — matches the override behavior the legacy path had.
 func threadRuntimeEnvIntoTFVars(tfvarsPath string) error {
-	if ami := os.Getenv("AWS_AMI"); ami != "" {
-		if err := setOrAppendTFVar(tfvarsPath, "aws_ami", ami); err != nil {
-			return fmt.Errorf("set aws_ami in tfvars: %w", err)
-		}
+	overrides := []struct{ envA, envB, tfKey string }{
+		{"AWS_AMI", "", "aws_ami"},
+		{"SSH_USER", "", "aws_ssh_user"},
+		{"INSTANCE_TYPE", "EC2_INSTANCE_CLASS", "instance_type"},
+		{"VOLUME_SIZE", "", "aws_volume_size"},
+		{"VOLUME_TYPE", "", "aws_volume_type"},
+		{"AWS_REGION", "", "aws_region"},
 	}
-	if sshUser := os.Getenv("SSH_USER"); sshUser != "" {
-		if err := setOrAppendTFVar(tfvarsPath, "aws_ssh_user", sshUser); err != nil {
-			return fmt.Errorf("set aws_ssh_user in tfvars: %w", err)
+	for _, o := range overrides {
+		if value := envOr(o.envA, o.envB); value != "" {
+			if err := setOrAppendTFVar(tfvarsPath, o.tfKey, value); err != nil {
+				return fmt.Errorf("set %s in tfvars: %w", o.tfKey, err)
+			}
 		}
 	}
 
@@ -348,7 +352,7 @@ func updateMainTfModuleSource(qaInfraProvider, mainTfPath string) error {
 
 	// Point cluster_nodes at the upstream module.
 	clusterNodesSrc := fmt.Sprintf(
-		"%s//tofu/%s/modules/cluster_nodes?ref=%s", qaInfraRepo, qaInfraProvider, qaInfraRef)
+		"%s//tofu/%s/modules/cluster_nodes?ref=%s", qaInfraRepo, qaInfraProvider, qaInfraRef())
 	contentStr = strings.ReplaceAll(contentStr, "placeholder-for-remote-module", clusterNodesSrc)
 
 	// Inject the external_db module only for Path B; other runs get no block, so they never fetch it.
@@ -366,9 +370,19 @@ func updateMainTfModuleSource(qaInfraProvider, mainTfPath string) error {
 const (
 	qaInfraRepo      = "github.com/rancher/qa-infra-automation"
 	qaInfraCloneURL  = "https://github.com/rancher/qa-infra-automation.git"
-	qaInfraRef       = "main"
+	qaInfraRefDef    = "main"
 	externalDBMarker = "# __EXTERNAL_DB_MODULE__"
 )
+
+// qaInfraRef returns the qa-infra-automation git ref for tofu modules and the ansible clone.
+// QA_INFRA_REF pins a tag/branch (not a bare SHA — it feeds `git clone --branch`).
+func qaInfraRef() string {
+	if ref := strings.TrimSpace(os.Getenv("QA_INFRA_REF")); ref != "" {
+		return ref
+	}
+
+	return qaInfraRefDef
+}
 
 // usesExternalDBProvisioning reports whether to auto-provision the RDS (Path B): external + no endpoint via env or flags.
 func usesExternalDBProvisioning() bool {
@@ -393,7 +407,7 @@ func externalDBModuleBlock(qaInfraProvider string) string {
 	}
 
 	src := fmt.Sprintf(
-		"%s//tofu/%s/modules/external_db?ref=%s", qaInfraRepo, qaInfraProvider, qaInfraRef)
+		"%s//tofu/%s/modules/external_db?ref=%s", qaInfraRepo, qaInfraProvider, qaInfraRef())
 
 	return fmt.Sprintf(`module "external_db" {
   source              = %q

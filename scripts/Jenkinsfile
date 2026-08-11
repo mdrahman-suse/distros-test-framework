@@ -77,6 +77,52 @@ node {
                   def data = "ENV_PRODUCT=${env.PRODUCT_NAME}\nENV_TFVARS=${env.PRODUCT_NAME}.tfvars\n" +
                   "KUBE_CONFIG=${env.KUBE_CONFIG}\nBASTION_IP=${env.BASTION_IP}\nLOG_LEVEL=${env.LOG_LEVEL}\nINSTALL_VERSION=${env.INSTALL_VERSION}\n" +
                    "ENV_MODULE=${module}\nINSTALL_CHANNEL=${env.INSTALL_CHANNEL}\n"
+
+                  // qainfra provisioning contract. Suites without qainfra support stay on legacy
+                  // until it exists; an explicit PROVISIONER_MODULE param always wins.
+                  def qainfraUnsupported = ['airgap', 'mixedoscluster']
+                  def provisionerModule = env.PROVISIONER_MODULE ?: (qainfraUnsupported.contains(env.TEST_DIRECTORY) ? 'legacy' : 'qainfra')
+                  if (env.TFVARS && env.TFVARS =~ /(?m)^\s*proxy_setup\s*=\s*true/) {
+                    provisionerModule = 'legacy'
+                  }
+                  data += "PROVISIONER_MODULE=${provisionerModule}\n" +
+                          "QA_INFRA_PROVIDER=${env.QA_INFRA_PROVIDER ?: 'aws'}\n" +
+                          "PROVISIONER_TYPE=${env.PROVISIONER_TYPE ?: 'opentofu'}\n" +
+                          "RESOURCE_NAME=${env.HOSTNAME_PREFIX}\n" +
+                          'SSH_LOCAL_KEY_PATH=/go/src/github.com/rancher/distros-test-framework/config/.ssh/aws_key.pem\n'
+                  if (env.AWS_SSH_KEY_NAME) {
+                    data += "SSH_KEY_NAME=${env.AWS_SSH_KEY_NAME}\n"
+                  }
+
+                  // qainfra mode keeps the legacy UX: the TFVARS text area (in qainfra format)
+                  // replaces infrastructure/qainfra/vars.tfvars wholesale, guarded by a format marker.
+                  def isQainfraBlob = env.TFVARS && (env.TFVARS =~ /(?m)^\s*(aws_hostname_prefix|aws_region|nodes)\s*=/)
+                  if (provisionerModule == 'qainfra' && isQainfraBlob) {
+                    writeFile(file: '../infrastructure/qainfra/vars.tfvars', text: env.TFVARS)
+                  }
+                  // server/worker flags are env-consumed by the framework — lift them out of the
+                  // blob when no explicit param was given.
+                  def flagFrom = { key ->
+                    def m = (env.TFVARS ?: '') =~ /(?m)^\s*${key}\s*=\s*"(.*)"/
+                    m.find() ? m.group(1) : ''
+                  }
+                  def serverFlags = env.SERVER_FLAGS ?: flagFrom('server_flags')
+                  def workerFlags = env.WORKER_FLAGS ?: flagFrom('worker_flags')
+                  if (serverFlags) { data += "SERVER_FLAGS=${serverFlags}\n" }
+                  if (workerFlags) { data += "WORKER_FLAGS=${workerFlags}\n" }
+
+                  ['QA_INFRA_REF', 'SSH_USER', 'NO_OF_SERVER_NODES', 'NO_OF_WORKER_NODES',
+                   'SPLIT_ROLES', 'ETCD_ONLY_NODES', 'ETCD_CP_NODES', 'ETCD_WORKER_NODES',
+                   'CP_ONLY_NODES', 'CP_WORKER_NODES', 'NODE_OS', 'AWS_AMI', 'ARCH', 'CNI',
+                   'INSTANCE_TYPE', 'VOLUME_SIZE', 'VOLUME_TYPE',
+                   'AWS_REGION', 'DATASTORE_TYPE', 'EXTERNAL_DB', 'EXTERNAL_DB_VERSION',
+                   'DB_GROUP_NAME', 'EXTERNAL_DB_NODE_TYPE', 'CREATE_EIP'].each { name ->
+                    def value = env."${name}"
+                    if (value?.trim()) {
+                      data += "${name}=${value}\n"
+                    }
+                  }
+
                     //adding data to .env file
                     writeFile(file: envFile, text: data)
                     sh "chmod 600 ${envFile}"
