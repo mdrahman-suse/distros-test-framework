@@ -78,16 +78,13 @@ node {
                   "KUBE_CONFIG=${env.KUBE_CONFIG}\nBASTION_IP=${env.BASTION_IP}\nLOG_LEVEL=${env.LOG_LEVEL}\nINSTALL_VERSION=${env.INSTALL_VERSION}\n" +
                    "ENV_MODULE=${module}\nINSTALL_CHANNEL=${env.INSTALL_CHANNEL}\n"
 
-                  // qainfra provisioning contract. Suites without qainfra support stay on legacy
-                  // until it exists; an explicit PROVISIONER_MODULE param always wins.
-                  def qainfraUnsupported = ['airgap', 'mixedoscluster']
-                  def provisionerModule = env.PROVISIONER_MODULE ?: (qainfraUnsupported.contains(env.TEST_DIRECTORY) ? 'legacy' : 'qainfra')
-                  if (env.TFVARS && env.TFVARS =~ /(?m)^\s*proxy_setup\s*=\s*true/) {
-                    provisionerModule = 'legacy'
-                  }
+                  // qainfra provisioning contract. Default stays legacy during the canary
+                  // phase — only jobs that set PROVISIONER_MODULE=qainfra opt in.
+                  def provisionerModule = env.PROVISIONER_MODULE ?: 'legacy'
                   data += "PROVISIONER_MODULE=${provisionerModule}\n" +
                           "QA_INFRA_PROVIDER=${env.QA_INFRA_PROVIDER ?: 'aws'}\n" +
                           "PROVISIONER_TYPE=${env.PROVISIONER_TYPE ?: 'opentofu'}\n" +
+                          "INFRA_PROVISIONER=${env.INFRA_PROVISIONER ?: 'opentofu'}\n" +
                           "RESOURCE_NAME=${env.HOSTNAME_PREFIX}\n" +
                           'SSH_LOCAL_KEY_PATH=/go/src/github.com/rancher/distros-test-framework/config/.ssh/aws_key.pem\n'
                   if (env.AWS_SSH_KEY_NAME) {
@@ -116,10 +113,22 @@ node {
                    'CP_ONLY_NODES', 'CP_WORKER_NODES', 'NODE_OS', 'AWS_AMI', 'ARCH', 'CNI',
                    'INSTANCE_TYPE', 'VOLUME_SIZE', 'VOLUME_TYPE',
                    'AWS_REGION', 'DATASTORE_TYPE', 'EXTERNAL_DB', 'EXTERNAL_DB_VERSION',
-                   'DB_GROUP_NAME', 'EXTERNAL_DB_NODE_TYPE', 'CREATE_EIP'].each { name ->
+                   'DB_GROUP_NAME', 'EXTERNAL_DB_NODE_TYPE', 'EXTERNAL_DB_ENDPOINT',
+                   'EXTERNAL_DB_SUBNET_IDS', 'DB_USERNAME', 'DB_PASSWORD', 'ENGINE_MODE',
+                   'CREATE_EIP'].each { name ->
                     def value = env."${name}"
                     if (value?.trim()) {
                       data += "${name}=${value}\n"
+                    }
+                  }
+
+                  // Batch OS validation overrides map onto the qainfra contract too.
+                  // Written last so they win over any whitelist value above.
+                  [['BATCH_OS_AWS_AMI', 'AWS_AMI'], ['BATCH_OS_AWS_USER', 'SSH_USER'],
+                   ['BATCH_OS_NODE_OS', 'NODE_OS']].each { src, dst ->
+                    def value = env."${src}"
+                    if (value?.trim() && value != 'null') {
+                      data += "${dst}=${value}\n"
                     }
                   }
 

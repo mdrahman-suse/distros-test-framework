@@ -5,13 +5,15 @@ variable "public_ssh_key" {
 }
 
 variable "aws_access_key" {
-  description = "AWS access key"
+  description = "AWS access key (empty = use ambient AWS env credentials)"
   type        = string
+  default     = ""
 }
 
 variable "aws_secret_key" {
-  description = "AWS secret key"
+  description = "AWS secret key (empty = use ambient AWS env credentials)"
   type        = string
+  default     = ""
 }
 
 variable "aws_region" {

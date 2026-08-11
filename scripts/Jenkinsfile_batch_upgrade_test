@@ -46,21 +46,25 @@ node {
             def jobs = [:]
 
             test_dir.each { test_name ->
-              def actual_testdir_name = test_name
+              // "<test>_qainfra" entries target the "<job>_qainfra" clone jobs; the
+              // base name drives TEST_DIRECTORY, tags and the job map lookup.
+              def is_qainfra = test_name.endsWith("_qainfra")
+              def base_name = is_qainfra ? test_name.substring(0, test_name.length() - 8) : test_name
+              def actual_testdir_name = base_name
               def job_test_args = "${TEST_ARGS}"
               def job_aws_ssh_key_name = "${AWS_SSH_KEY_NAME}"
               def job_aws_ssh_pem_key = "${AWS_SSH_PEM_KEY}"
 
-              if (test_name.contains("upgrade")) {
+              if (base_name.contains("upgrade")) {
                 actual_testdir_name = "upgradecluster"
-                if (test_name.contains("upgradesuc")) {
+                if (base_name.contains("upgradesuc")) {
                   job_test_args = job_test_args + " -tags=upgradesuc -sucUpgradeVersion ${UPGRADE_VERSION}"
                 }
-                else if (test_name.contains("upgrademanual")) {
+                else if (base_name.contains("upgrademanual")) {
                   job_test_args = job_test_args + " -tags=upgrademanual -installVersionOrCommit ${UPGRADE_VERSION}"
                 }
-                else if (test_name == "upgradereplacement") {
-                  job_test_args = job_test_args + " -tags=${test_name} -installVersionOrCommit ${UPGRADE_VERSION}"
+                else if (base_name == "upgradereplacement") {
+                  job_test_args = job_test_args + " -tags=${base_name} -installVersionOrCommit ${UPGRADE_VERSION}"
                 }
                 job_test_args = job_test_args +  " -channel ${UPGRADE_CHANNEL}"
               }
@@ -96,7 +100,14 @@ node {
                 "upgradereplacement": "${product_name}_upgrade_node_replacement${suffix}"
               ]
 
-              def jobName = testToJobMap[test_name]
+              def jobName = testToJobMap[base_name]
+              if (is_qainfra && jobName) {
+                // clone jobs are named "<base job>_qainfra" and have no _rpm variants
+                jobName = jobName.replace("_rpm", "") + "_qainfra"
+                if ("${env.QA_INFRA_REF}" != "null" && "${env.QA_INFRA_REF}" != "") {
+                  upgrade_params << string(name: 'QA_INFRA_REF', value: "${env.QA_INFRA_REF}")
+                }
+              }
 
               if (jobName) {
                 jobs[test_name] = { build job: jobName, parameters: upgrade_params }

@@ -312,11 +312,6 @@ func hclStringList(commaSeparated string) string {
 const awsHostnamePrefixMaxLen = 24
 
 func updateVarsFile(varsFilePath, uniqueID, product, resourceName string) error {
-	content, err := os.ReadFile(varsFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to read vars file: %w", err)
-	}
-
 	prefix := fmt.Sprintf("dsf-%s-%s-%s", resourceName, product, uniqueID)
 	if len(prefix) > awsHostnamePrefixMaxLen {
 		return fmt.Errorf(
@@ -327,16 +322,8 @@ func updateVarsFile(varsFilePath, uniqueID, product, resourceName string) error 
 			prefix, len(prefix), awsHostnamePrefixMaxLen, resourceName, len(resourceName))
 	}
 
-	varsContent := string(content)
-	re := regexp.MustCompile(`aws_hostname_prefix\s*=\s*"[^"]*"`)
-	varsContent = re.ReplaceAllString(varsContent,
-		fmt.Sprintf(`aws_hostname_prefix = %q`, prefix))
-
-	if err := os.WriteFile(varsFilePath, []byte(varsContent), 0o644); err != nil {
-		return fmt.Errorf("failed to write vars file: %w", err)
-	}
-
-	return nil
+	// Set-or-append so user-supplied tfvars don't need a placeholder line.
+	return setOrAppendTFVar(varsFilePath, "aws_hostname_prefix", prefix)
 }
 
 // updateMainTfModuleSource updates main.tf to use the correct infrastructure module based on QA_INFRA_PROVIDER env var.

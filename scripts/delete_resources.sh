@@ -245,6 +245,8 @@ do
 
       -r: resource prefix names (comma separated). Matched as a leading prefix
           (starts_with) — pass a full, specific token to avoid over-matching.
+          qainfra tokens in the exact "dsf-<name>-" form (trailing hyphen) switch
+          to substring matching so the tf-dsf-* EC2 tags are caught too.
       -d: Dry run option. This will simply list the names and ids of what could potentially be listed. But will not delete anything.
       -h: help. Prints usage example.
       
@@ -332,6 +334,10 @@ else
       PREFIX_LENGTH=${#i}
       if [ "$PREFIX_LENGTH" -gt 5 ]; then
         echo "## For prefix name: $i:"
+        # qainfra "dsf-<name>-" tokens need substring matching to also catch the
+        # "tf-dsf-<name>-" EC2 tags. Require the full framework format (trailing
+        # hyphen included) so a loose token like "dsf-qa" can't over-match.
+        if [[ "$i" =~ ^dsf-[a-z0-9][a-z0-9-]*-$ ]]; then MATCH_CONTAINS=1; else MATCH_CONTAINS=; fi
         # Attempt every prefix, but remember if any failed so the job (Jenkins
         # passes comma-separated prefixes) doesn't pass on a partial cleanup.
         delete_all_resources "$i" || { echo "Cleanup failed for prefix: $i"; FAILED=1; }

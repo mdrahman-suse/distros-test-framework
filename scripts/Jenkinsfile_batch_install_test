@@ -46,23 +46,27 @@ node {
             def jobs = [:]
 
             test_dir.each { test_name ->
-              def actual_testdir_name = test_name
+              // "<test>_qainfra" entries target the "<job>_qainfra" clone jobs; the
+              // base name drives TEST_DIRECTORY and the job map lookup.
+              def is_qainfra = test_name.endsWith("_qainfra")
+              def base_name = is_qainfra ? test_name.substring(0, test_name.length() - 8) : test_name
+              def actual_testdir_name = base_name
               def job_aws_ssh_key_name = "${AWS_SSH_KEY_NAME}"
               def job_aws_ssh_pem_key = "${AWS_SSH_PEM_KEY}"
 
-              if (test_name == "docker_cri" || test_name.contains("validatecluster")) {
+              if (base_name == "docker_cri" || base_name.contains("validatecluster")) {
                 actual_testdir_name = "validatecluster"
               }
 
-              if (test_name.contains("restartservice")) {
+              if (base_name.contains("restartservice")) {
                 actual_testdir_name = "restartservice"
               }
 
-              if (test_name.contains("mixedoscluster")) {
+              if (base_name.contains("mixedoscluster")) {
                 actual_testdir_name = "mixedoscluster"
               }
 
-              if (test_name.contains("killalluninstall")) {
+              if (base_name.contains("killalluninstall")) {
                 actual_testdir_name = "killalluninstall"
               }
 
@@ -83,8 +87,8 @@ node {
                 string(name: 'QASE_RUN_ID', value: "${QASE_RUN_ID}"),
               ]
 
-              // qainfra canary: forward the qa-infra-automation ref when the batch sets one.
-              if (test_name == "validatecluster_qainfra" && "${env.QA_INFRA_REF}" != "null" && "${env.QA_INFRA_REF}" != "") {
+              // qainfra children: forward the qa-infra-automation ref when the batch sets one.
+              if (is_qainfra && "${env.QA_INFRA_REF}" != "null" && "${env.QA_INFRA_REF}" != "") {
                 install_params << string(name: 'QA_INFRA_REF', value: "${env.QA_INFRA_REF}")
               }
 
@@ -96,7 +100,6 @@ node {
                 "ipv6only": "${product_name}_ipv6_only",
                 "clusterrestore": "${product_name}_cluster_restore",
                 "validatecluster": "${product_name}_validate_cluster",
-                "validatecluster_qainfra": "k3s_validate_cluster_qainfra",
                 "validatecluster_arm": "${product_name}_validate_cluster_arm",
                 "validatecluster_rpm": "rke2_validate_cluster_rpm",
                 "validatecluster_arm_rpm": "rke2_validate_cluster_arm_rpm",
@@ -112,7 +115,11 @@ node {
                 "clusterreset": "${product_name}_cluster_reset${suffix}"
               ]
 
-              def jobName = testToJobMap[test_name]
+              def jobName = testToJobMap[base_name]
+              if (is_qainfra && jobName) {
+                // clone jobs are named "<base job>_qainfra" and have no _rpm variants
+                jobName = jobName.replace("_rpm", "") + "_qainfra"
+              }
 
               if (jobName) {
                 jobs[test_name] = { build job: jobName, parameters: install_params }
