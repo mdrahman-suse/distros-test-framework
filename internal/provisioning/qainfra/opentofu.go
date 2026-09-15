@@ -355,9 +355,9 @@ func updateMainTfModuleSource(qaInfraProvider, mainTfPath string) error {
 }
 
 const (
-	qaInfraRepoDef     = "github.com/rancher/qa-infra-automation"
-	qaInfraCloneURLDef = "https://github.com/rancher/qa-infra-automation.git"
-	qaInfraRefDef      = "main"
+	qaInfraRepoDef     = "github.com/mdrahman-suse/qa-infra-automation"
+	qaInfraCloneURLDef = "https://github.com/mdrahman-suse/qa-infra-automation.git"
+	qaInfraRefDef      = "feat/add_windows_support"
 	externalDBMarker   = "# __EXTERNAL_DB_MODULE__"
 )
 
