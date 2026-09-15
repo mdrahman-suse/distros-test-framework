@@ -33,6 +33,8 @@ type clusterNode struct {
 	Roles     []string `json:"roles"`
 	PublicIP  string   `json:"public_ip"`
 	PrivateIP string   `json:"private_ip"`
+	OS        string   `json:"os,omitempty"`
+	SSHUser   string   `json:"ssh_user,omitempty"`
 }
 
 // fetchClusterNodesJSON reads the Tofu cluster_nodes_json output from the
@@ -90,10 +92,8 @@ func buildStaticInventory(data *clusterNodesJSON, product string) string {
 	return b.String()
 }
 
-// assignNodeGroups maps each node to its inventory group (master/servers/workers)
-// with mutually-exclusive first-match-wins rules: master = first etcd node (else
-// first cp for external-datastore topologies); servers = remaining etcd/cp;
-// workers = worker. Mirrors the upstream schema so every source of truth agrees.
+// assignNodeGroups maps each node to its inventory group (master/servers/workers/windows_workers)
+// with mutually-exclusive first-match-wins rules.
 func assignNodeGroups(data *clusterNodesJSON, _ string) map[string]string {
 	assigned := make(map[string]string) // node name -> group
 
@@ -101,6 +101,9 @@ func assignNodeGroups(data *clusterNodesJSON, _ string) map[string]string {
 	masterFound := false
 	for _, roleSet := range [][]string{{"etcd"}, {"cp"}} {
 		for _, n := range data.Nodes {
+			if n.OS == "windows" {
+				continue
+			}
 			if hasAnyRole(n.Roles, roleSet) {
 				assigned[n.Name] = "master"
 				masterFound = true
@@ -116,13 +119,15 @@ func assignNodeGroups(data *clusterNodesJSON, _ string) map[string]string {
 		if _, ok := assigned[n.Name]; ok {
 			continue
 		}
+		if n.OS == "windows" {
+			if hasAnyRole(n.Roles, []string{"worker"}) {
+				assigned[n.Name] = "windows_workers"
+			}
+			continue
+		}
 		switch {
-		// Any remaining node with etcd or cp is a K3s/RKE2 server. Matches
-		// isServerRole in config.go and the legacy "node_role.sh" classification
-		// (etcd-only, etcd-cp, cp-only, cp-worker all install as `server`).
-		// Without etcd here, extra etcd-only nodes in a split-role topology
-		// would be provisioned by Tofu but skipped by Ansible — silently
-		// shrinking the cluster.
+		// Any remaining node with etcd or cp is a K3s/RKE2 server.
+		// Extra etcd-only nodes in a split-role topology install as servers.
 		case hasAnyRole(n.Roles, []string{"etcd", "cp"}):
 			assigned[n.Name] = "servers"
 		case hasAnyRole(n.Roles, []string{"worker"}):
@@ -134,7 +139,7 @@ func assignNodeGroups(data *clusterNodesJSON, _ string) map[string]string {
 }
 
 // nodeRole returns the rke2_node_role value for a node.
-func nodeRole(n clusterNode, assigned map[string]string) string {
+func nodeRole(n *clusterNode, assigned map[string]string) string {
 	switch {
 	case assigned[n.Name] == "master":
 		return "master"
@@ -180,13 +185,25 @@ func writeInventoryHosts(b *strings.Builder, data *clusterNodesJSON, assigned ma
 		writeLine(b, "    ", n.Name, ":")
 		writeLine(b, "      ansible_host: ", yamlQuote(n.PublicIP))
 		writeLine(b, "      node_roles: ", yamlInlineList(n.Roles))
-		writeLine(b, "      rke2_node_role: ", yamlQuote(nodeRole(n, assigned)))
+		writeLine(b, "      rke2_node_role: ", yamlQuote(nodeRole(&n, assigned)))
+		if n.OS == "windows" {
+			sshUser := n.SSHUser
+			if sshUser == "" {
+				sshUser = "Administrator"
+			}
+			writeLine(b, "      node_os: \"windows\"")
+			writeLine(b, "      ansible_user: ", yamlQuote(sshUser))
+			writeLine(b, "      ansible_connection: \"ssh\"")
+			writeLine(b, "      ansible_shell_type: \"powershell\"")
+			writeLine(b, "      ansible_become: false")
+			writeLine(b, "      ansible_pipelining: false")
+		}
 	}
 }
 
-// writeInventoryChildren writes the all.children groups (master/servers/workers).
+// writeInventoryChildren writes the all.children groups (master/servers/workers/windows_workers).
 func writeInventoryChildren(b *strings.Builder, data *clusterNodesJSON, assigned map[string]string) {
-	groups := []string{"master", "servers", "workers"}
+	groups := []string{"master", "servers", "workers", "windows_workers"}
 	groupMembers := make(map[string][]clusterNode)
 	for _, n := range data.Nodes {
 		if g, ok := assigned[n.Name]; ok {

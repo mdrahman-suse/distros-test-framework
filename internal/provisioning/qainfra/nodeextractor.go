@@ -13,6 +13,7 @@ type infraNode struct {
 	name     string
 	publicIP string
 	role     string
+	os       string
 }
 
 // extractNodesFromTofuOutput reads the cluster_nodes_json Tofu output and
@@ -29,14 +30,23 @@ func extractNodesFromTofuOutput(config *driver.InfraConfig) ([]infraNode, error)
 
 	nodes := make([]infraNode, 0, len(data.Nodes))
 	for _, n := range data.Nodes {
+		nodeOS := n.OS
+		if nodeOS == "" {
+			if strings.Contains(strings.ToLower(n.Name), "windows") {
+				nodeOS = "windows"
+			} else {
+				nodeOS = "linux"
+			}
+		}
 		node := infraNode{
 			name:     n.Name,
 			publicIP: n.PublicIP,
 			role:     strings.Join(n.Roles, ","),
+			os:       nodeOS,
 		}
 		nodes = append(nodes, node)
-		resources.LogLevel("debug", "Extracted node from cluster_nodes_json: &{Name:%s PublicIP:%s Role:%s}",
-			node.name, node.publicIP, node.role)
+		resources.LogLevel("debug", "Extracted node from cluster_nodes_json: &{Name:%s PublicIP:%s Role:%s OS:%s}",
+			node.name, node.publicIP, node.role, node.os)
 	}
 
 	sort.SliceStable(nodes, func(i, j int) bool {

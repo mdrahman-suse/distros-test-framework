@@ -22,13 +22,13 @@ func setupAnsibleEnvironment(config *driver.InfraConfig) error {
 	// same fork/branch.
 	if err := runCmdWithTimeout(config.InfraProvisioner.RootDir, 2*time.Minute,
 		"git", "clone", "--depth", "1", "--filter=blob:none", "--sparse", "--branch",
-		qaInfraRef(), qaInfraCloneURL, config.InfraProvisioner.TempDir); err != nil {
+		qaInfraRef(), qaInfraCloneURL(), config.InfraProvisioner.TempDir); err != nil {
 		return fmt.Errorf("git clone failed: %w", err)
 	}
 
 	ansibleDir := "ansible/" + config.Product
 	if err := runCmdWithTimeout(config.InfraProvisioner.TempDir, 2*time.Minute,
-		"git", "sparse-checkout", "set", ansibleDir, "ansible/roles"); err != nil {
+		"git", "sparse-checkout", "set", ansibleDir, "ansible/roles", "requirements.yml"); err != nil {
 		return fmt.Errorf("sparse checkout failed: %w", err)
 	}
 
@@ -85,16 +85,24 @@ func patchRKE2ConfigTemplate(config *driver.InfraConfig) error {
 	return nil
 }
 
-// installAnsibleCollection installs the required collection for dynamic inventory.
+// installAnsibleCollection installs collections needed by playbooks.
 func installAnsibleCollection(workingDir string) error {
-	resources.LogLevel("debug", "Installing cloud.terraform Ansible collection for dynamic inventory")
+	reqPath := filepath.Join(workingDir, "requirements.yml")
+	if _, err := os.Stat(reqPath); err == nil {
+		resources.LogLevel("debug", "Installing Ansible collections from requirements.yml")
+		if err := runCmdWithTimeout(workingDir, 5*time.Minute,
+			"ansible-galaxy", "collection", "install", "-r", "requirements.yml", "--force"); err != nil {
+			return fmt.Errorf("failed to install collections from requirements.yml: %w", err)
+		}
 
+		return nil
+	}
+
+	resources.LogLevel("debug", "Installing cloud.terraform Ansible collection")
 	if err := runCmdWithTimeout(workingDir, 3*time.Minute,
 		"ansible-galaxy", "collection", "install", "cloud.terraform", "--force"); err != nil {
 		return fmt.Errorf("failed to install cloud.terraform collection: %w", err)
 	}
-
-	resources.LogLevel("debug", "Successfully installed cloud.terraform collection")
 
 	return nil
 }

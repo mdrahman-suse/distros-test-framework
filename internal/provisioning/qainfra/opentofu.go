@@ -232,6 +232,12 @@ func threadRuntimeEnvIntoTFVars(tfvarsPath string) error {
 		{"VOLUME_SIZE", "", "aws_volume_size"},
 		{"VOLUME_TYPE", "", "aws_volume_type"},
 		{"AWS_REGION", "", "aws_region"},
+		{"AWS_AMI_WINDOWS", "WINDOWS_AMI", "aws_ami_windows"},
+		{"INSTANCE_TYPE_WINDOWS", "WINDOWS_INSTANCE_TYPE", "instance_type_windows"},
+		{"AWS_VOLUME_SIZE_WINDOWS", "VOLUME_SIZE_WINDOWS", "aws_volume_size_windows"},
+		{"AWS_VOLUME_TYPE_WINDOWS", "VOLUME_TYPE_WINDOWS", "aws_volume_type_windows"},
+		{"AWS_WINDOWS_SSH_USER", "WINDOWS_SSH_USER", "aws_windows_ssh_user"},
+		{"WINDOWS_ENABLE_RDP", "", "windows_enable_rdp"},
 	}
 	for _, o := range overrides {
 		if value := envOr(o.envA, o.envB); value != "" {
@@ -333,7 +339,7 @@ func updateMainTfModuleSource(qaInfraProvider, mainTfPath string) error {
 
 	// Point cluster_nodes at the upstream module.
 	clusterNodesSrc := fmt.Sprintf(
-		"%s//tofu/%s/modules/cluster_nodes?ref=%s", qaInfraRepo, qaInfraProvider, qaInfraRef())
+		"%s//tofu/%s/modules/cluster_nodes?ref=%s", qaInfraRepo(), qaInfraProvider, qaInfraRef())
 	contentStr = strings.ReplaceAll(contentStr, "placeholder-for-remote-module", clusterNodesSrc)
 
 	// Inject the external_db module only for Path B; other runs get no block, so they never fetch it.
@@ -349,11 +355,32 @@ func updateMainTfModuleSource(qaInfraProvider, mainTfPath string) error {
 }
 
 const (
-	qaInfraRepo      = "github.com/rancher/qa-infra-automation"
-	qaInfraCloneURL  = "https://github.com/rancher/qa-infra-automation.git"
-	qaInfraRefDef    = "main"
-	externalDBMarker = "# __EXTERNAL_DB_MODULE__"
+	qaInfraRepoDef     = "github.com/rancher/qa-infra-automation"
+	qaInfraCloneURLDef = "https://github.com/rancher/qa-infra-automation.git"
+	qaInfraRefDef      = "main"
+	externalDBMarker   = "# __EXTERNAL_DB_MODULE__"
 )
+
+// qaInfraRepo returns qa-infra repository address for module sources.
+func qaInfraRepo() string {
+	if repo := strings.TrimSpace(os.Getenv("QA_INFRA_REPO")); repo != "" {
+		return repo
+	}
+
+	return qaInfraRepoDef
+}
+
+// qaInfraCloneURL returns git clone URL for qa-infra repository.
+func qaInfraCloneURL() string {
+	if u := strings.TrimSpace(os.Getenv("QA_INFRA_CLONE_URL")); u != "" {
+		return u
+	}
+	if repo := strings.TrimSpace(os.Getenv("QA_INFRA_REPO")); repo != "" {
+		return "https://" + repo + ".git"
+	}
+
+	return qaInfraCloneURLDef
+}
 
 // qaInfraRef returns the qa-infra-automation git ref for tofu modules and the ansible clone.
 // QA_INFRA_REF pins a tag/branch (not a bare SHA — it feeds `git clone --branch`).
@@ -388,7 +415,7 @@ func externalDBModuleBlock(qaInfraProvider string) string {
 	}
 
 	src := fmt.Sprintf(
-		"%s//tofu/%s/modules/external_db?ref=%s", qaInfraRepo, qaInfraProvider, qaInfraRef())
+		"%s//tofu/%s/modules/external_db?ref=%s", qaInfraRepo(), qaInfraProvider, qaInfraRef())
 
 	return fmt.Sprintf(`module "external_db" {
   source              = %q

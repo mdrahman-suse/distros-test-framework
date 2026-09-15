@@ -350,26 +350,33 @@ func buildClusterConfig(config *driver.InfraConfig) error {
 		return fmt.Errorf("failed to extract nodes from tofu output: %w", err)
 	}
 
-	var serverIPs, agentIPs []string
+	var serverIPs, agentIPs, winAgentIPs []string
 	for _, node := range nodes {
-		if isServerRole(node.role) {
+		switch {
+		case node.os == "windows":
+			winAgentIPs = append(winAgentIPs, node.publicIP)
+		case isServerRole(node.role):
 			serverIPs = append(serverIPs, node.publicIP)
-		} else {
+		default:
 			agentIPs = append(agentIPs, node.publicIP)
 		}
 	}
 
 	config.Cluster.ServerIPs = serverIPs
 	config.Cluster.AgentIPs = agentIPs
+	config.Cluster.WinAgentIPs = winAgentIPs
 	config.Cluster.NumServers = len(serverIPs)
 	config.Cluster.NumAgents = len(agentIPs)
+	config.Cluster.NumWinAgents = len(winAgentIPs)
 	config.Cluster.Status = "cluster created"
 
 	applySplitRolesIfEnabled(config, nodes)
 
-	resources.LogLevel("info", "Built cluster config: %d servers, %d agents", len(serverIPs), len(agentIPs))
+	resources.LogLevel("info", "Built cluster config: %d servers, %d agents, %d windows agents",
+		len(serverIPs), len(agentIPs), len(winAgentIPs))
 	resources.LogLevel("debug", "Server IPs: %v", serverIPs)
 	resources.LogLevel("debug", "Agent IPs: %v", agentIPs)
+	resources.LogLevel("debug", "Windows Agent IPs: %v", winAgentIPs)
 
 	return nil
 }
