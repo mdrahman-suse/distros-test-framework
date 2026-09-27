@@ -575,24 +575,36 @@ func replaceAgents(
 
 			return joinErr
 		}
+
+		ip := externalIp
+		if ip == "" {
+			ip = privateIp
+		}
+		nodeErr := validateNodeJoin(ip)
+		if nodeErr != nil {
+			shared.LogLevel("error", "error validating node join: %w with ip: %s", nodeErr, ip)
+
+			return nodeErr
+		}
 	}
 
 	return nil
 }
 
 func deleteAgents(a *aws.Client, c *shared.Cluster) error {
-	for _, i := range c.AgentIPs {
-		if deleteNodeErr := shared.DeleteNode(i); deleteNodeErr != nil {
+	for _, ip := range c.AgentIPs {
+		if deleteNodeErr := shared.DeleteNode(ip); deleteNodeErr != nil {
 			shared.LogLevel("error", "error deleting agent: %w\n", deleteNodeErr)
 
 			return deleteNodeErr
 		}
+		shared.LogLevel("debug", "Node IP deleted from the cluster: %s\n", ip)
 
-		err := a.DeleteInstance(i)
+		err := a.DeleteInstance(ip)
 		if err != nil {
 			return err
 		}
-		shared.LogLevel("debug", "Instance IP deleted from cloud provider: %s\n", i)
+		shared.LogLevel("debug", "Instance IP deleted from cloud provider: %s\n", ip)
 	}
 
 	return nil
