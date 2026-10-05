@@ -281,7 +281,8 @@ get_windows_assets() {
   download_retry wget $url/rke2.windows-amd64.tar.gz
   download_retry wget -O rke2-install.ps1 https://raw.githubusercontent.com/rancher/rke2/master/install.ps1
   if [ -n "$tarball_type" ]; then
-    download_retry wget $url/rke2-windows-ltsc2022-amd64-images.$tarball_type
+    # download_retry wget $url/rke2-windows-ltsc2022-amd64-images.$tarball_type
+    download_retry wget $url/rke2-windows-2025-amd64-images.$tarball_type
   fi
   echo "Verifying Windows artifact checksums..."
   verify_checksums "sha256sum-amd64.txt"
